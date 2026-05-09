@@ -1,0 +1,293 @@
+<Window x:Class="Timer.ControllerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Timer"
+        Width="360"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        ResizeMode="CanMinimize"
+        Closing="Window_Closing"
+        StateChanged="Window_StateChanged">
+
+    <Grid Margin="14" Background="{StaticResource AppBackgroundBrush}">
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <!-- TITLE BAR -->
+            <RowDefinition Height="Auto"/>
+            <!-- TIMER -->
+            <RowDefinition Height="Auto"/>
+            <!-- CONTROLS -->
+            <RowDefinition Height="Auto"/>
+            <!-- SETTINGS BUTTONS -->
+            <RowDefinition Height="Auto"/>
+            <!-- SETTINGS/STATISTICS -->
+        </Grid.RowDefinitions>
+
+        <!-- ================= TITLE BAR ================= -->
+        <Border Grid.Row="0"
+                Background="{StaticResource AppBackgroundBrush}"
+                BorderBrush="{StaticResource PanelBorderBrush}"
+                BorderThickness="0"
+                CornerRadius="8"
+                Padding="10,6"
+                MouseDown="TitleBar_MouseDown">
+
+            <Grid Height="28">
+
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center">
+
+                    <Button x:Name="ToggleOverlayButton"
+                            Width="30"
+                            Height="22"
+                            Margin="0,0,6,0"
+                            Click="ToggleOverlayButton_Click"
+                            ToolTip="Оверлей">
+                        <Image Source="pack://application:,,,/Icons/icon-overlay.png"
+                               Width="16"
+                               Height="16"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Center"/>
+                    </Button>
+
+                    <Button Content="—"
+                            Width="30"
+                            Height="22"
+                            Margin="0,0,6,0"
+                            Click="Minimize_Click"/>
+                    <Button Content="✕"
+                            Width="30"
+                            Height="22"
+                            Click="Close_Click"/>
+
+                </StackPanel>
+
+            </Grid>
+        </Border>
+
+        <!-- ================= TIMER ================= -->
+        <Border Grid.Row="1"
+                Background="{StaticResource PanelBackgroundBrush}"
+                BorderBrush="{StaticResource PanelBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="12,8"
+                Margin="0,0,0,10">
+
+            <Grid Height="54">
+
+                <TextBlock x:Name="TimeDisplay"
+                           Text="00:05:00"
+                           FontSize="34"
+                           FontFamily="Courier New"
+                           FontWeight="Bold"
+                           Foreground="{StaticResource PrimaryTextBrush}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+
+                <StackPanel x:Name="DurationPanel"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center">
+
+                    <TextBox x:Name="CountdownHours"
+                             Text="0"
+                             Style="{StaticResource DurationTextBox}"
+                             GotFocus="TimeBox_GotFocus"
+                             PreviewMouseLeftButtonDown="TimeBox_PreviewMouseLeftButtonDown"
+                             PreviewTextInput="DurationTextBox_PreviewTextInput"
+                             TextChanged="CountdownDuration_TextChanged"
+                             LostFocus="CountdownDuration_LostFocus"/>
+
+                    <TextBlock Text=":" FontSize="35" VerticalAlignment="Center" Margin="4,-10,4,0"/>
+
+                    <TextBox x:Name="CountdownMinutes"
+                             Text="60"
+                             Style="{StaticResource DurationTextBox}"
+                             GotFocus="TimeBox_GotFocus"
+                             PreviewMouseLeftButtonDown="TimeBox_PreviewMouseLeftButtonDown"
+                             PreviewTextInput="DurationTextBox_PreviewTextInput"
+                             TextChanged="CountdownDuration_TextChanged"
+                             LostFocus="CountdownDuration_LostFocus"/>
+
+                    <TextBlock Text=":" FontSize="35" VerticalAlignment="Center" Margin="4,-10,4,0"/>
+
+                    <TextBox x:Name="CountdownSeconds"
+                             Text="00"
+                             Style="{StaticResource DurationTextBox}"
+                             GotFocus="TimeBox_GotFocus"
+                             PreviewMouseLeftButtonDown="TimeBox_PreviewMouseLeftButtonDown"
+                             PreviewTextInput="DurationTextBox_PreviewTextInput"
+                             TextChanged="CountdownDuration_TextChanged"
+                             LostFocus="CountdownDuration_LostFocus"/>
+
+                </StackPanel>
+
+            </Grid>
+        </Border>
+
+        <!-- ================= CONTROLS ================= -->
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Center"
+                    Margin="0,0,0,8">
+
+            <Button x:Name="PlayPauseButton"
+                    Style="{StaticResource PrimaryIconButton}"
+                    Click="PlayPauseButton_Click"
+                    Margin="0,0,8,0">
+                <Image x:Name="PlayPauseIcon"
+                       Source="pack://application:,,,/Icons/icon-play.png"
+                       Width="38"
+                       Height="38"/>
+            </Button>
+
+            <Button x:Name="FinishButton"
+                    Style="{StaticResource IconButton}"
+                    Click="FinishButton_Click"
+                    Margin="0,0,8,0">
+                <Image Source="pack://application:,,,/Icons/icon-finish.png"
+                       Width="38"
+                       Height="38"/>
+            </Button>
+
+            <Button x:Name="ResetButton"
+                    Style="{StaticResource DangerIconButton}"
+                    Click="ResetButton_Click"
+                    Margin="0,0,18,0">
+                <Image Source="pack://application:,,,/Icons/icon-reset.png"
+                       Width="38"
+                       Height="38"/>
+            </Button>
+
+        </StackPanel>
+
+        <!-- ================= SETTINGS BUTTONS ================= -->
+        <StackPanel Grid.Row="3"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,0,0,4">
+
+            <Button x:Name="StatisticsButton"
+                    Style="{StaticResource IconButton}"
+                    Click="StatisticsButton_Click"
+                    Margin="0,0,2,0">
+                <Image Source="pack://application:,,,/Icons/icon-statisics.png"
+                       Width="34"
+                       Height="34"/>
+            </Button>
+
+            <Button x:Name="SettingsButton"
+                    Style="{StaticResource IconButton}"
+                    Click="SettingsButton_Click">
+                <Image Source="pack://application:,,,/Icons/icon-settings.png"
+                       Width="34"
+                       Height="34"/>
+            </Button>
+
+        </StackPanel>
+
+        <!-- ================= SETTINGS / STATISTICS ================= -->
+        <Grid Grid.Row="4">
+
+            <!-- SETTINGS -->
+            <Border x:Name="SettingsPanel"
+                    Visibility="Collapsed"
+                    Background="{StaticResource PanelBackgroundBrush}"
+                    BorderBrush="{StaticResource PanelBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="12"
+                    Margin="0,4,0,0">
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Screen" Margin="0,0,12,8"/>
+                    <ComboBox Grid.Row="0" Grid.Column="1" x:Name="ScreenSelector" Margin="0,0,0,8"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Position" Margin="0,0,12,8"/>
+                    <ComboBox Grid.Row="1" Grid.Column="1" x:Name="PositionSelector" Margin="0,0,0,8">
+                        <ComboBoxItem Content="Top Left"/>
+                        <ComboBoxItem Content="Top Center" IsSelected="True"/>
+                        <ComboBoxItem Content="Top Right"/>
+                        <ComboBoxItem Content="Bottom Left"/>
+                        <ComboBoxItem Content="Bottom Center"/>
+                        <ComboBoxItem Content="Bottom Right"/>
+                    </ComboBox>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="BG" Margin="0,0,12,10"/>
+                    <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10">
+                        <Slider x:Name="BackgroundOpacitySlider"
+                                Width="190"
+                                Minimum="0"
+                                Maximum="100"
+                                Value="0"/>
+                        <TextBlock x:Name="BackgroundOpacityLabel"
+                                   Text="0%"
+                                   Width="40"
+                                   Margin="8,0,0,0"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Play/Pause" Margin="0,0,12,8"/>
+                    <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
+                        <ComboBox x:Name="PlayHotkeyModifierSelector" Width="86" Margin="0,0,8,0"/>
+                        <ComboBox x:Name="PlayHotkeyKeySelector" Width="86"/>
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Overlay" Margin="0,0,12,12"/>
+                    <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,12">
+                        <ComboBox x:Name="OverlayHotkeyModifierSelector" Width="86" Margin="0,0,8,0"/>
+                        <ComboBox x:Name="OverlayHotkeyKeySelector" Width="86"/>
+                    </StackPanel>
+
+                    <Grid Grid.Row="5" Grid.ColumnSpan="2">
+                        <Button Grid.Row="5"
+                            Grid.Column="1"
+                            x:Name="SaveSettingsButton"
+                            Content="Сохранить"
+                            Style="{StaticResource TextButton}"
+                            MinWidth="80"
+                            HorizontalAlignment="Center"
+                            Click="SaveSettingsButton_Click"/>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- STATISTICS -->
+            <Border x:Name="StatisticsPanel"
+                    Visibility="Collapsed"
+                    Background="{StaticResource PanelBackgroundBrush}"
+                    BorderBrush="{StaticResource PanelBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="12"
+                    Margin="0,4,0,0">
+
+                <ScrollViewer MaxHeight="250"
+                              VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="HistoryStack"/>
+                </ScrollViewer>
+
+            </Border>
+
+        </Grid>
+
+    </Grid>
+</Window>
