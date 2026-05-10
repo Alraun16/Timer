@@ -8,7 +8,8 @@
         WindowStyle="None"
         ResizeMode="CanMinimize"
         Closing="Window_Closing"
-        StateChanged="Window_StateChanged">
+        StateChanged="Window_StateChanged"
+        PreviewMouseDown="Window_PreviewMouseDown">
 
     <Grid Margin="14" Background="{StaticResource AppBackgroundBrush}">
 
@@ -234,10 +235,11 @@
                     <TextBlock Grid.Row="2" Grid.Column="0" Text="BG" Margin="0,0,12,10"/>
                     <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10">
                         <Slider x:Name="BackgroundOpacitySlider"
-                                Width="190"
-                                Minimum="0"
-                                Maximum="100"
-                                Value="0"/>
+                            Width="190"
+                            Minimum="0"
+                            Maximum="100"
+                            Value="50"
+                            ValueChanged="BackgroundOpacitySlider_ValueChanged"/>
                         <TextBlock x:Name="BackgroundOpacityLabel"
                                    Text="0%"
                                    Width="40"

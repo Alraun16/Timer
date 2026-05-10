@@ -38,7 +38,18 @@ namespace Timer
             "F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12"
         };
 
-        private readonly DispatcherTimer _timer;
+        private readonly TimerService _timer = new();
+
+        private readonly DispatcherTimer _tickTimer = new()
+        {
+            Interval = TimeSpan.FromMilliseconds(100)
+        };
+
+        private bool IsTimerRunning => _timer._isRunning;
+        private bool IsTimerPaused => _timer._isPaused;
+        private bool IsTimerIdle => _timer._isIdle;
+        private bool IsTimerCompleted => IsTimerIdle && _timer.Remaining <= TimeSpan.Zero;
+
         private readonly List<OverlayWindow> _overlayWindows = new();
         private readonly Dictionary<TimerIconState, Drawing.Icon> _notifyIcons = new();
 
@@ -47,14 +58,8 @@ namespace Timer
 
         private bool _uiReady;
         private bool _isLoadingSettings;
-        private bool _isRunning;
-        private bool _isFinished;
 
-        private DateTime _lastTickUtc;
 
-        private TimeSpan _countdownDuration = TimeSpan.FromMinutes(60);
-        private TimeSpan _countdownRemaining = TimeSpan.FromMinutes(60);
-        
         private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e)
         {
             if (e.OriginalSource is FrameworkElement fe &&
@@ -74,23 +79,56 @@ namespace Timer
         {
             Close();
         }
-        
+
+        private void Window_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (Keyboard.FocusedElement is not TextBox)
+                return;
+
+            if (e.OriginalSource is DependencyObject source && IsInsideTextBox(source))
+                return;
+
+            Keyboard.ClearFocus();
+        }
+
+        private static bool IsInsideTextBox(DependencyObject? element)
+        {
+            while (element != null)
+            {
+                if (element is TextBox)
+                    return true;
+
+                element = VisualTreeHelper.GetParent(element);
+            }
+
+            return false;
+        }
+
         public ControllerWindow()
         {
-#pragma warning disable WPF0001
-            System.Windows.Application.Current.ThemeMode = ThemeMode.Light;
-#pragma warning restore WPF0001
-
             InitializeComponent();
 
             _uiReady = true;
 
-            _timer = new DispatcherTimer
+            _timer.Tick += remaining =>
             {
-                Interval = TimeSpan.FromMilliseconds(100)
+                UpdateTimeDisplay();
+                UpdateButtonStates();
             };
 
-            _timer.Tick += Timer_Tick;
+            _timer.Completed += () =>
+            {
+                UpdateTimeDisplay();
+                UpdateButtonStates();
+                UpdateMainPanelVisibility();
+                UpdateIcon(TimerIconState.Finished);
+
+                new System.Media.SoundPlayer(AppFile("Sounds/reminder.wav")).Play();
+                AppendHistory(_timer.Duration);
+                RefreshHistoryView();
+            };
+
+            _tickTimer.Tick += (_, _) => _timer.UpdateTick();
 
             InitializeTrayIcon();
             PopulateScreens();
@@ -101,7 +139,7 @@ namespace Timer
             UpdateIcon(TimerIconState.Idle);
             UpdateMainPanelVisibility();
 
-            _timer.Start();
+            _tickTimer.Start();
         }
 
         protected override void OnSourceInitialized(EventArgs e)
@@ -263,7 +301,7 @@ namespace Timer
             {
                 Hours = GetInputNumber(CountdownHours),
                 Minutes = GetInputNumber(CountdownMinutes),
-                Seconds = 0,
+                Seconds = GetInputNumber(CountdownSeconds),
                 BackgroundOpacityPercent = (int)BackgroundOpacitySlider.Value,
                 ScreenIndex = GetSelectedScreenIndex(),
                 Position = GetSelectedText(PositionSelector, "Top Center"),
@@ -381,86 +419,44 @@ namespace Timer
             return IntPtr.Zero;
         }
 
-        private void Timer_Tick(object? sender, EventArgs e)
-        {
-            if (!_isRunning) return;
-
-            var now = DateTime.UtcNow;
-            _countdownRemaining -= now - _lastTickUtc;
-            _lastTickUtc = now;
-
-            if (_countdownRemaining <= TimeSpan.Zero)
-            {
-                CompleteTimer(writeFullDuration: true);
-                return;
-            }
-
-            UpdateTimeDisplay();
-        }
-
         private void PlayPauseButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_isRunning)
+            if (IsTimerRunning)
             {
-                PauseTimer();
+                _timer.Pause();
+                UpdateIcon(TimerIconState.Paused);
+                UpdateButtonStates();
+                UpdateMainPanelVisibility();
                 return;
             }
 
-            if (_isFinished || _countdownRemaining <= TimeSpan.Zero)
+            if (IsTimerCompleted)
             {
-                ApplyDurationFromInputs(resetRemaining: true);
+                _timer.Reset();
             }
 
-            if (_countdownRemaining <= TimeSpan.Zero) return;
-
-            _isRunning = true;
-            _isFinished = false;
-            _lastTickUtc = DateTime.UtcNow;
-            UpdateButtonStates();
+            _timer.Start();
             UpdateIcon(TimerIconState.Running);
-            UpdateMainPanelVisibility();
-        }
-
-        private void PauseTimer()
-        {
-            _isRunning = false;
             UpdateButtonStates();
-            UpdateIcon(TimerIconState.Paused);
             UpdateMainPanelVisibility();
         }
 
         private void FinishButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_isFinished || _countdownDuration <= TimeSpan.Zero) return;
-            if (!_isRunning && _countdownRemaining >= _countdownDuration) return;
-            CompleteTimer(writeFullDuration: true);
+            _timer.Finish();
         }
 
         private void ResetButton_Click(object sender, RoutedEventArgs e)
         {
-            _isRunning = false;
-            _isFinished = false;
             ApplyDurationFromInputs(resetRemaining: true);
+            _timer.Reset();
+
             UpdateTimeDisplay();
             UpdateButtonStates();
             UpdateIcon(TimerIconState.Idle);
             UpdateMainPanelVisibility();
         }
 
-        private void CompleteTimer(bool writeFullDuration)
-        {
-            _isRunning = false;
-            _isFinished = true;
-            _countdownRemaining = TimeSpan.Zero;
-            UpdateTimeDisplay();
-            UpdateButtonStates();
-            UpdateIcon(TimerIconState.Finished);
-            UpdateMainPanelVisibility();
-            new System.Media.SoundPlayer(AppFile("sounds/reminder.wav")).Play();
-            AppendHistory(writeFullDuration ? _countdownDuration : _countdownDuration - _countdownRemaining);
-            RefreshHistoryView();
-
-        }
 
         private void AppendHistory(TimeSpan duration)
         {
@@ -508,7 +504,7 @@ namespace Timer
 
         private void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
         {
-            ApplyDurationFromInputs(resetRemaining: !_isRunning);
+            ApplyDurationFromInputs(resetRemaining: !IsTimerRunning);
             BackgroundOpacityLabel.Text = $"{(int)BackgroundOpacitySlider.Value}%";
             SaveSettings();
             RegisterConfiguredHotkeys();
@@ -526,7 +522,7 @@ namespace Timer
 
         private void CountdownDuration_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (!_uiReady || _isLoadingSettings || _isRunning) return;
+            if (!_uiReady || _isLoadingSettings || IsTimerRunning) return;
 
             ApplyDurationFromInputs(resetRemaining: true);
             UpdateTimeDisplay();
@@ -687,13 +683,12 @@ namespace Timer
             int hours = GetInputNumber(CountdownHours);
             int minutes = GetInputNumber(CountdownMinutes);
             int seconds = GetInputNumber(CountdownSeconds);
-            _countdownDuration = TimeSpan.FromHours(hours) + TimeSpan.FromMinutes(minutes) + TimeSpan.FromSeconds(seconds); ;
 
-            if (resetRemaining)
-            {
-                _countdownRemaining = _countdownDuration;
-                _isFinished = false;
-            }
+            var duration = TimeSpan.FromHours(hours)
+                         + TimeSpan.FromMinutes(minutes)
+                         + TimeSpan.FromSeconds(seconds);
+
+            _timer.SetDuration(duration, resetRemaining);
         }
 
         private static int GetInputNumber(TextBox textBox)
@@ -712,7 +707,7 @@ namespace Timer
             }
         }
 
-        private string GetFormattedTime() => FormatTime(_countdownRemaining);
+        private string GetFormattedTime() => FormatTime(_timer.Remaining);
 
         private static string FormatTime(TimeSpan time)
         {
@@ -722,9 +717,13 @@ namespace Timer
 
         private void UpdateMainPanelVisibility()
         {
-            bool showEditor = !_isRunning && !_isFinished && _countdownRemaining == _countdownDuration;
-            DurationPanel.Visibility = showEditor || _isFinished ? Visibility.Visible : Visibility.Collapsed;
-            TimeDisplay.Visibility = showEditor || _isFinished ? Visibility.Collapsed : Visibility.Visible;
+            DurationPanel.Visibility = IsTimerIdle
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+            TimeDisplay.Visibility = IsTimerIdle
+                ? Visibility.Collapsed
+                : Visibility.Visible;
         }
 
         private void ApplyAllOverlaySettings()
@@ -792,10 +791,15 @@ namespace Timer
 
         private void UpdateButtonStates()
         {
-            bool canRun = _countdownDuration > TimeSpan.Zero || _countdownRemaining > TimeSpan.Zero;
+            bool canRun = _timer.Duration > TimeSpan.Zero || _timer.Remaining > TimeSpan.Zero;
+
             PlayPauseButton.IsEnabled = canRun;
-            FinishButton.IsEnabled = !_isFinished && (_isRunning || _countdownRemaining < _countdownDuration);
-            PlayPauseIcon.Source = new BitmapImage(new Uri(_isRunning
+
+            FinishButton.IsEnabled =
+                !IsTimerCompleted &&
+                (IsTimerRunning || _timer.Remaining < _timer.Duration);
+
+            PlayPauseIcon.Source = new BitmapImage(new Uri(IsTimerRunning
                 ? "pack://application:,,,/Icons/icon-pause.png"
                 : "pack://application:,,,/Icons/icon-play.png", UriKind.Absolute));
         }
@@ -843,7 +847,7 @@ namespace Timer
             UnregisterHotKey(helper.Handle, HOTKEY_PLAY_PAUSE);
             UnregisterHotKey(helper.Handle, HOTKEY_TOGGLE_OVERLAY);
 
-            _timer.Stop();
+            _tickTimer.Stop();
             foreach (var overlay in _overlayWindows) overlay.Close();
             _notifyIcon?.Dispose();
 

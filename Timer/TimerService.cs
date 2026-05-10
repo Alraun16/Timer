@@ -7,16 +7,15 @@ namespace Timer
         private TimeSpan _duration;
         private TimeSpan _remaining;
 
-        private bool _isRunning;
-        private bool _isFinished;
-
         private DateTime _lastTickUtc;
 
         public TimeSpan Duration => _duration;
         public TimeSpan Remaining => _remaining;
 
-        public bool IsRunning => _isRunning;
-        public bool IsFinished => _isFinished;
+
+        public bool _isIdle = true;
+        public bool _isRunning;
+        public bool _isPaused;
 
         public event Action<TimeSpan>? Tick;
         public event Action? Completed;
@@ -30,7 +29,6 @@ namespace Timer
             if (resetRemaining)
             {
                 _remaining = duration;
-                _isFinished = false;
             }
         }
 
@@ -40,22 +38,35 @@ namespace Timer
                 return;
 
             _isRunning = true;
-            _isFinished = false;
+            _isPaused = false;
+            _isIdle = false;
             _lastTickUtc = DateTime.UtcNow;
         }
 
         public void Pause()
         {
+            if (!_isRunning)
+                return;
+
             _isRunning = false;
+            _isPaused = true;
         }
 
         public void Reset()
         {
             _isRunning = false;
-            _isFinished = false;
+            _isPaused = false;
+            _isIdle = true;
             _remaining = _duration;
 
             Tick?.Invoke(_remaining);
+        }
+
+        public void Finish()
+        {
+            if (_isIdle) return;
+
+            Complete();
         }
 
         #endregion
@@ -84,7 +95,7 @@ namespace Timer
 
         #region State Transitions
 
-        public void Toggle()
+        public void TogglePlayPause()
         {
             if (_isRunning)
             {
@@ -99,7 +110,8 @@ namespace Timer
         private void Complete()
         {
             _isRunning = false;
-            _isFinished = true;
+            _isPaused = false;
+            _isIdle = true;
             _remaining = TimeSpan.Zero;
 
             Tick?.Invoke(_remaining);
