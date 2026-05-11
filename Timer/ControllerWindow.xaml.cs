@@ -57,6 +57,7 @@ namespace Timer
 
         private bool _uiReady;
         private bool _isLoadingSettings;
+        private TaskDescriptionEditor _taskDescriptionEditor = null!;
 
 
         private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e)
@@ -87,7 +88,9 @@ namespace Timer
             if (e.OriginalSource is DependencyObject source && IsInsideTextBox(source))
                 return;
 
+            _taskDescriptionEditor.MarkFocusCleared();
             Keyboard.ClearFocus();
+            _taskDescriptionEditor.UpdateStateLater();
         }
 
         private static bool IsInsideTextBox(DependencyObject? element)
@@ -106,6 +109,12 @@ namespace Timer
         public ControllerWindow()
         {
             InitializeComponent();
+            _taskDescriptionEditor = new TaskDescriptionEditor(
+                EditPanel,
+                TaskDescriptionTextBox,
+                TaskDescriptionPlaceholder,
+                TaskDescriptionCounter,
+                SaveTaskDescriptionButton);
 
             _uiReady = true;
 
@@ -441,6 +450,22 @@ namespace Timer
             UpdateMainPanelVisibility();
         }
 
+        private void EditButton_Click(object sender, RoutedEventArgs e)
+        {
+            SettingsPanel.Visibility = Visibility.Collapsed;
+            _taskDescriptionEditor.Toggle();
+        }
+
+        private void CancelTaskDescriptionButton_Click(object sender, RoutedEventArgs e)
+        {
+            _taskDescriptionEditor.Cancel();
+        }
+
+        private void SaveTaskDescriptionButton_Click(object sender, RoutedEventArgs e)
+        {
+            _taskDescriptionEditor.Save();
+        }
+
         private void ToggleOverlayButton_Click(object sender, RoutedEventArgs e)
         {
             if (_overlayWindows.Count > 0)
@@ -515,7 +540,7 @@ namespace Timer
         private void SettingsButton_Click(object sender, RoutedEventArgs e)
         {
             bool shouldShow = SettingsPanel.Visibility != Visibility.Visible;
-            HistoryPanel.Visibility = Visibility.Collapsed;
+            CollapsePanels();
             SettingsPanel.Visibility = shouldShow ? Visibility.Visible : Visibility.Collapsed;
         }
 
@@ -529,6 +554,7 @@ namespace Timer
 
         private void CollapsePanels()
         {
+            _taskDescriptionEditor.Collapse();
             SettingsPanel.Visibility = Visibility.Collapsed;
             HistoryPanel.Visibility = Visibility.Collapsed;
         }
