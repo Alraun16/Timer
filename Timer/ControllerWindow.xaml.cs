@@ -48,11 +48,11 @@ namespace Timer
         private bool IsTimerIdle => _timer.IsIdle;
         private bool IsTimerCompleted => IsTimerIdle && _timer.Remaining <= TimeSpan.Zero;
 
-        private readonly List<OverlayWindow> _overlayWindows = new();
         private readonly Dictionary<TimerIconState, Drawing.Icon> _notifyIcons = new();
 
         private WinForms.NotifyIcon? _notifyIcon;
         private HwndSource? _hwndSource;
+        private OverlayWindow? _overlayWindow;
 
         private bool _uiReady;
         private bool _isLoadingSettings;
@@ -229,7 +229,6 @@ namespace Timer
         private void PopulateScreens()
         {
             ScreenSelector.Items.Clear();
-            ScreenSelector.Items.Add(new ComboBoxItem { Content = "All Screens", Tag = -1 });
 
             var screens = WinForms.Screen.AllScreens;
             for (int i = 0; i < screens.Length; i++)
@@ -272,9 +271,9 @@ namespace Timer
                 BackgroundOpacitySlider.Value = settings.BackgroundOpacityPercent;
                 BackgroundOpacityLabel.Text = $"{settings.BackgroundOpacityPercent}%";
 
-                if (settings.ScreenIndex >= -1 && settings.ScreenIndex < WinForms.Screen.AllScreens.Length)
+                if (settings.ScreenIndex >= 0 && settings.ScreenIndex < WinForms.Screen.AllScreens.Length)
                 {
-                    ScreenSelector.SelectedIndex = settings.ScreenIndex + 1;
+                    ScreenSelector.SelectedIndex = settings.ScreenIndex;
                 }
 
                 SelectComboBoxItem(PositionSelector, settings.Position);
@@ -284,7 +283,7 @@ namespace Timer
                 SelectComboBoxItem(OverlayHotkeyKeySelector, settings.OverlayHotkeyKey);
 
                 ApplyDurationFromInputs(resetRemaining: true);
-                ApplyAllOverlaySettings();
+                RefreshOverlay();
             }
             finally
             {
@@ -474,40 +473,21 @@ namespace Timer
 
         private void ToggleOverlayButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_overlayWindows.Count > 0)
+            if (_overlayWindow != null)
             {
-                foreach (var overlay in _overlayWindows) overlay.Close();
-                _overlayWindows.Clear();
+                _overlayWindow.Close();
+                _overlayWindow = null;
                 return;
             }
 
-            int selectedScreenIndex = GetSelectedScreenIndex();
-            if (selectedScreenIndex == -1)
-            {
-                foreach (var screen in WinForms.Screen.AllScreens)
-                {
-                    CreateOverlayForScreen(screen);
-                }
-            }
-            else if (selectedScreenIndex >= 0 && selectedScreenIndex < WinForms.Screen.AllScreens.Length)
-            {
-                CreateOverlayForScreen(WinForms.Screen.AllScreens[selectedScreenIndex]);
-            }
-        }
-
-        private void CreateOverlayForScreen(WinForms.Screen screen)
-        {
-            var overlay = new OverlayWindow();
-            overlay.PlayPauseRequested += (_, _) => PlayPauseButton_Click(this, new RoutedEventArgs());
-            overlay.FinishRequested += (_, _) => FinishButton_Click(this, new RoutedEventArgs());
-            overlay.ResetRequested += (_, _) => ResetButton_Click(this, new RoutedEventArgs());
-            overlay.ExitRequested += (_, _) => Close();
-
-            ApplyOverlaySettings(overlay);
-            PositionOverlay(overlay, screen);
-            overlay.Show();
-            overlay.UpdateTime(GetFormattedTime());
-            _overlayWindows.Add(overlay);
+            _overlayWindow = new OverlayWindow();
+            _overlayWindow.PlayPauseRequested += (_, _) => PlayPauseButton_Click(this, new RoutedEventArgs());
+            _overlayWindow.FinishRequested += (_, _) => FinishButton_Click(this, new RoutedEventArgs());
+            _overlayWindow.ResetRequested += (_, _) => ResetButton_Click(this, new RoutedEventArgs());
+            _overlayWindow.ExitRequested += (_, _) => Close();
+            _overlayWindow.Closed += (_, _) => _overlayWindow = null;
+            RefreshOverlay();
+            _overlayWindow.Show();
         }
 
         private void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
@@ -516,8 +496,7 @@ namespace Timer
             BackgroundOpacityLabel.Text = $"{(int)BackgroundOpacitySlider.Value}%";
             SaveSettings();
             RegisterConfiguredHotkeys();
-            ApplyAllOverlaySettings();
-            ReopenOverlays();
+            RefreshOverlay();
             CollapsePanels();
         }
 
@@ -525,7 +504,7 @@ namespace Timer
         {
             if (!_uiReady) return;
             BackgroundOpacityLabel.Text = $"{(int)BackgroundOpacitySlider.Value}%";
-            ApplyAllOverlaySettings();
+            RefreshOverlay();
         }
 
         private void CountdownDuration_TextChanged(object sender, TextChangedEventArgs e)
@@ -569,15 +548,6 @@ namespace Timer
             HistoryPanel.Visibility = Visibility.Collapsed;
         }
 
-        private void ReopenOverlays()
-        {
-            if (_isLoadingSettings || _overlayWindows.Count == 0) return;
-
-            foreach (var overlay in _overlayWindows) overlay.Close();
-            _overlayWindows.Clear();
-            ToggleOverlayButton_Click(this, new RoutedEventArgs());
-        }
-
         private void ApplyDurationFromInputs(bool resetRemaining)
         {
             int hours = GetInputNumber(CountdownHours);
@@ -601,10 +571,7 @@ namespace Timer
             string timeText = GetFormattedTime();
             TimeDisplay.Text = timeText;
 
-            foreach (var overlay in _overlayWindows)
-            {
-                overlay.UpdateTime(timeText);
-            }
+            _overlayWindow?.UpdateTime(timeText);
         }
 
         private string GetFormattedTime() => FormatTime(_timer.Remaining);
@@ -626,67 +593,28 @@ namespace Timer
                 : Visibility.Visible;
         }
 
-        private void ApplyAllOverlaySettings()
+        private void RefreshOverlay()
         {
-            foreach (var overlay in _overlayWindows)
-            {
-                ApplyOverlaySettings(overlay);
-            }
-        }
+            if (_isLoadingSettings || _overlayWindow == null) return;
 
-        private void ApplyOverlaySettings(OverlayWindow overlay)
-        {
-            overlay.ApplySettings((BackgroundOpacitySlider?.Value ?? 0) / 100.0);
-        }
-
-        private void PositionOverlay(OverlayWindow overlay, WinForms.Screen screen)
-        {
-            var bounds = screen.Bounds;
-            string position = GetSelectedText(PositionSelector, "Top Center");
-
-            overlay.UpdateLayout();
-            double dpiScale = GetDpiScaleForScreen();
-
-            double overlayWidth = overlay.ActualWidth > 0 ? overlay.ActualWidth : 170;
-            double overlayHeight = overlay.ActualHeight > 0 ? overlay.ActualHeight : 50;
-
-            double screenLeft = bounds.Left / dpiScale;
-            double screenTop = bounds.Top / dpiScale;
-            double screenWidth = bounds.Width / dpiScale;
-            double screenHeight = bounds.Height / dpiScale;
-            double screenRight = screenLeft + screenWidth;
-            double screenBottom = screenTop + screenHeight;
-            const int margin = 10;
-
-            (overlay.Left, overlay.Top) = position switch
-            {
-                "Top Left" => (screenLeft + margin, screenTop + margin),
-                "Top Center" => (screenLeft + (screenWidth - overlayWidth) / 2, screenTop + margin),
-                "Top Right" => (screenRight - overlayWidth - margin, screenTop + margin),
-                "Bottom Left" => (screenLeft + margin, screenBottom - overlayHeight - margin),
-                "Bottom Center" => (screenLeft + (screenWidth - overlayWidth) / 2, screenBottom - overlayHeight - margin),
-                "Bottom Right" => (screenRight - overlayWidth - margin, screenBottom - overlayHeight - margin),
-                _ => (screenLeft + (screenWidth - overlayWidth) / 2, screenTop + margin)
-            };
-        }
-
-        private double GetDpiScaleForScreen()
-        {
-            try
-            {
-                var source = PresentationSource.FromVisual(this);
-                return source?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
-            }
-            catch
-            {
-                return 1.0;
-            }
+            _overlayWindow.ApplySettings((BackgroundOpacitySlider?.Value ?? 0) / 100.0);
+            _overlayWindow.UpdateTime(GetFormattedTime());
+            _overlayWindow.PositionOnScreen(GetSelectedScreen(), GetSelectedText(PositionSelector, "Top Center"));
         }
 
         private int GetSelectedScreenIndex()
         {
             if (ScreenSelector.SelectedItem is ComboBoxItem item && item.Tag is int index) return index;
-            return -1;
+            return 0;
+        }
+
+        private WinForms.Screen GetSelectedScreen()
+        {
+            int selectedScreenIndex = GetSelectedScreenIndex();
+            if (selectedScreenIndex >= 0 && selectedScreenIndex < WinForms.Screen.AllScreens.Length)
+                return WinForms.Screen.AllScreens[selectedScreenIndex];
+
+            return WinForms.Screen.PrimaryScreen ?? WinForms.Screen.AllScreens[0];
         }
 
         private void UpdateButtonStates()
@@ -748,7 +676,7 @@ namespace Timer
             UnregisterHotKey(helper.Handle, HOTKEY_TOGGLE_OVERLAY);
 
             _tickTimer.Stop();
-            foreach (var overlay in _overlayWindows) overlay.Close();
+            _overlayWindow?.Close();
             _notifyIcon?.Dispose();
 
             foreach (var icon in _notifyIcons.Values)

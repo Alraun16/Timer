@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Forms;
 using System.Windows.Interop;
 using System.Windows.Media;
 
@@ -62,6 +63,49 @@ namespace Timer
         {
             byte alpha = (byte)(Math.Clamp(backgroundOpacity, 0, 1) * byte.MaxValue);
             OverlayBorder.Background = new SolidColorBrush(Color.FromArgb(alpha, 0, 0, 0));
+        }
+
+        public void PositionOnScreen(Screen screen, string position)
+        {
+            var bounds = screen.Bounds;
+
+            UpdateLayout();
+            double dpiScale = GetDpiScale();
+
+            double overlayWidth = ActualWidth > 0 ? ActualWidth : 170;
+            double overlayHeight = ActualHeight > 0 ? ActualHeight : 50;
+
+            double screenLeft = bounds.Left / dpiScale;
+            double screenTop = bounds.Top / dpiScale;
+            double screenWidth = bounds.Width / dpiScale;
+            double screenHeight = bounds.Height / dpiScale;
+            double screenRight = screenLeft + screenWidth;
+            double screenBottom = screenTop + screenHeight;
+            const int margin = 10;
+
+            (Left, Top) = position switch
+            {
+                "Top Left" => (screenLeft + margin, screenTop + margin),
+                "Top Center" => (screenLeft + (screenWidth - overlayWidth) / 2, screenTop + margin),
+                "Top Right" => (screenRight - overlayWidth - margin, screenTop + margin),
+                "Bottom Left" => (screenLeft + margin, screenBottom - overlayHeight - margin),
+                "Bottom Center" => (screenLeft + (screenWidth - overlayWidth) / 2, screenBottom - overlayHeight - margin),
+                "Bottom Right" => (screenRight - overlayWidth - margin, screenBottom - overlayHeight - margin),
+                _ => (screenLeft + (screenWidth - overlayWidth) / 2, screenTop + margin)
+            };
+        }
+
+        private double GetDpiScale()
+        {
+            try
+            {
+                var source = PresentationSource.FromVisual(this);
+                return source?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
+            }
+            catch
+            {
+                return 1.0;
+            }
         }
 
         private void PlayPauseMenuItem_Click(object sender, RoutedEventArgs e)
