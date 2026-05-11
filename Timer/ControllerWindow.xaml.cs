@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Media;
 using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
@@ -38,6 +37,7 @@ namespace Timer
 
         private readonly TimerService _timer = new();
         private readonly SettingsService _settingsService = new();
+        private readonly HistoryService _historyService = new();
 
         private readonly DispatcherTimer _tickTimer = new()
         {
@@ -123,7 +123,7 @@ namespace Timer
                 UpdateIcon(TimerIconState.Finished);
 
                 new System.Media.SoundPlayer(AppFile("Sounds/reminder.wav")).Play();
-                AppendHistory(_timer.Duration);
+                _historyService.Append(_timer.Duration);
                 RefreshHistoryView();
             };
 
@@ -441,13 +441,6 @@ namespace Timer
             UpdateMainPanelVisibility();
         }
 
-
-        private void AppendHistory(TimeSpan duration)
-        {
-            string line = $"{DateTime.Now:dd.MM.yyyy H:mm} - {FormatTime(duration)}{Environment.NewLine}";
-            File.AppendAllText(AppFile("History"), line);
-        }
-
         private void ToggleOverlayButton_Click(object sender, RoutedEventArgs e)
         {
             if (_overlayWindows.Count > 0)
@@ -522,22 +515,22 @@ namespace Timer
         private void SettingsButton_Click(object sender, RoutedEventArgs e)
         {
             bool shouldShow = SettingsPanel.Visibility != Visibility.Visible;
-            StatisticsPanel.Visibility = Visibility.Collapsed;
+            HistoryPanel.Visibility = Visibility.Collapsed;
             SettingsPanel.Visibility = shouldShow ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        private void StatisticsButton_Click(object sender, RoutedEventArgs e)
+        private void HistoryButton_Click(object sender, RoutedEventArgs e)
         {
-            bool shouldShow = StatisticsPanel.Visibility != Visibility.Visible;
+            bool shouldShow = HistoryPanel.Visibility != Visibility.Visible;
             SettingsPanel.Visibility = Visibility.Collapsed;
-            StatisticsPanel.Visibility = shouldShow ? Visibility.Visible : Visibility.Collapsed;
+            HistoryPanel.Visibility = shouldShow ? Visibility.Visible : Visibility.Collapsed;
             if (shouldShow) RefreshHistoryView();
         }
 
         private void CollapsePanels()
         {
             SettingsPanel.Visibility = Visibility.Collapsed;
-            StatisticsPanel.Visibility = Visibility.Collapsed;
+            HistoryPanel.Visibility = Visibility.Collapsed;
         }
 
         private void RefreshHistoryView()
@@ -545,7 +538,7 @@ namespace Timer
             if (HistoryStack == null) return;
 
             HistoryStack.Children.Clear();
-            var entries = ReadHistoryEntries().ToList();
+            var entries = _historyService.ReadEntries().ToList();
             if (entries.Count == 0)
             {
                 HistoryStack.Children.Add(new TextBlock
@@ -576,31 +569,6 @@ namespace Timer
                         Margin = new Thickness(12, 0, 0, 4)
                     });
                 }
-            }
-        }
-
-        private static IEnumerable<HistoryEntry> ReadHistoryEntries()
-        {
-            string path = AppFile("History");
-            if (!File.Exists(path)) yield break;
-
-            var regex = new Regex(@"^(?<date>\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2})\s+-\s+(?<duration>\d{2}:\d{2}:\d{2})$");
-            foreach (string line in File.ReadLines(path))
-            {
-                var match = regex.Match(line.Trim());
-                if (!match.Success) continue;
-
-                if (!DateTime.TryParseExact(match.Groups["date"].Value, "dd.MM.yyyy H:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var start))
-                {
-                    continue;
-                }
-
-                if (!TimeSpan.TryParseExact(match.Groups["duration"].Value, @"hh\:mm\:ss", CultureInfo.InvariantCulture, out var duration))
-                {
-                    continue;
-                }
-
-                yield return new HistoryEntry(start, duration);
             }
         }
 
@@ -848,7 +816,5 @@ namespace Timer
             Running,
             Finished
         }
-
-        private sealed record HistoryEntry(DateTime Start, TimeSpan Duration);
     }
 }

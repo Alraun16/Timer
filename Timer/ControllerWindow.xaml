@@ -23,7 +23,7 @@
             <RowDefinition Height="Auto"/>
             <!-- SETTINGS BUTTONS -->
             <RowDefinition Height="Auto"/>
-            <!-- SETTINGS/STATISTICS -->
+            <!-- SETTINGS/HISTORY -->
         </Grid.RowDefinitions>
 
         <!-- ================= TITLE BAR ================= -->
@@ -172,11 +172,11 @@
                     HorizontalAlignment="Right"
                     Margin="0,0,0,4">
 
-            <Button x:Name="StatisticsButton"
+            <Button x:Name="HistoryButton"
                     Style="{StaticResource IconButton}"
-                    Click="StatisticsButton_Click"
+                    Click="HistoryButton_Click"
                     Margin="0,0,2,0">
-                <Image Source="pack://application:,,,/Icons/icon-statisics.png"
+                <Image Source="pack://application:,,,/Icons/icon-history.png"
                        Width="34"
                        Height="34"/>
             </Button>
@@ -191,7 +191,7 @@
 
         </StackPanel>
 
-        <!-- ================= SETTINGS / STATISTICS ================= -->
+        <!-- ================= SETTINGS / HISTORY ================= -->
         <Grid Grid.Row="4">
 
             <!-- SETTINGS -->
@@ -272,8 +272,8 @@
                 </Grid>
             </Border>
 
-            <!-- STATISTICS -->
-            <Border x:Name="StatisticsPanel"
+            <!-- HISTORY -->
+            <Border x:Name="HistoryPanel"
                     Visibility="Collapsed"
                     Background="{StaticResource PanelBackgroundBrush}"
                     BorderBrush="{StaticResource PanelBorderBrush}"
