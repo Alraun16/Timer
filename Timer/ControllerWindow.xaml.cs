@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Media;
 using System.Runtime.InteropServices;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
@@ -30,7 +29,6 @@ namespace Timer
         private const int HOTKEY_PLAY_PAUSE = 1;
         private const int HOTKEY_TOGGLE_OVERLAY = 2;
 
-        private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
         private static readonly string[] ModifierOptions = { "Win", "Ctrl", "Alt", "Shift", "None" };
 
         private static readonly string[] KeyOptions =
@@ -39,6 +37,7 @@ namespace Timer
         };
 
         private readonly TimerService _timer = new();
+        private readonly SettingsService _settingsService = new();
 
         private readonly DispatcherTimer _tickTimer = new()
         {
@@ -251,7 +250,7 @@ namespace Timer
             _isLoadingSettings = true;
             try
             {
-                TimerSettings settings = ReadSettings();
+                TimerSettings settings = _settingsService.Load();
                 CountdownHours.Text = settings.Hours.ToString("D2");
                 CountdownMinutes.Text = settings.Minutes.ToString("D2");
                 CountdownSeconds.Text = settings.Seconds.ToString("D2");
@@ -278,21 +277,6 @@ namespace Timer
             }
         }
 
-        private static TimerSettings ReadSettings()
-        {
-            string path = AppFile("Settings");
-            if (!File.Exists(path)) return new TimerSettings();
-
-            try
-            {
-                return JsonSerializer.Deserialize<TimerSettings>(File.ReadAllText(path)) ?? new TimerSettings();
-            }
-            catch
-            {
-                return new TimerSettings();
-            }
-        }
-
         private void SaveSettings()
         {
             if (_isLoadingSettings) return;
@@ -311,7 +295,7 @@ namespace Timer
                 OverlayHotkeyKey = GetSelectedText(OverlayHotkeyKeySelector, "F7")
             };
 
-            File.WriteAllText(AppFile("Settings"), JsonSerializer.Serialize(settings, JsonOptions));
+            _settingsService.Save(settings);
         }
 
         private void SelectComboBoxItem(ComboBox comboBox, string value)
@@ -863,20 +847,6 @@ namespace Timer
             Paused,
             Running,
             Finished
-        }
-
-        private sealed class TimerSettings
-        {
-            public int Hours { get; set; }
-            public int Minutes { get; set; } = 5;
-            public int Seconds { get; set; }
-            public int BackgroundOpacityPercent { get; set; }
-            public int ScreenIndex { get; set; } = -1;
-            public string Position { get; set; } = "Top Center";
-            public string PlayHotkeyModifier { get; set; } = "Win";
-            public string PlayHotkeyKey { get; set; } = "F5";
-            public string OverlayHotkeyModifier { get; set; } = "Win";
-            public string OverlayHotkeyKey { get; set; } = "F7";
         }
 
         private sealed record HistoryEntry(DateTime Start, TimeSpan Duration);
