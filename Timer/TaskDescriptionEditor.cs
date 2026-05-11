@@ -76,6 +76,14 @@ namespace Timer
             Collapse();
         }
 
+        public void ClearSavedText()
+        {
+            _savedText = string.Empty;
+            _textBox.Text = string.Empty;
+            _isFocused = false;
+            UpdateState();
+        }
+
         public void Collapse()
         {
             _isFocused = false;

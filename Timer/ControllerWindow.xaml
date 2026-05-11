@@ -364,10 +364,33 @@
                     Padding="12"
                     Margin="0,4,0,0">
 
-                <ScrollViewer MaxHeight="250"
-                              VerticalScrollBarVisibility="Auto">
-                    <StackPanel x:Name="HistoryStack"/>
-                </ScrollViewer>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Text="История"
+                                   FontWeight="SemiBold"/>
+
+                        <TextBlock x:Name="HistoryTotalTextBlock"
+                                   Grid.Column="1"
+                                   Text="Всего: 0 мин"
+                                   Foreground="{StaticResource MutedTextBrush}"/>
+                    </Grid>
+
+                    <ScrollViewer Grid.Row="1"
+                                  Height="250"
+                                  VerticalScrollBarVisibility="Auto">
+                        <StackPanel x:Name="HistoryStack"/>
+                    </ScrollViewer>
+                </Grid>
 
             </Border>
 

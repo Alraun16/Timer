@@ -57,6 +57,8 @@ namespace Timer
 
         private bool _uiReady;
         private bool _isLoadingSettings;
+        private bool _isHistoryOpenedOnce;
+        private readonly Dictionary<DateTime, bool> _historyExpandedDays = new();
         private TaskDescriptionEditor _taskDescriptionEditor = null!;
 
 
@@ -132,7 +134,8 @@ namespace Timer
                 UpdateIcon(TimerIconState.Finished);
 
                 new System.Media.SoundPlayer(AppFile("Sounds/reminder.wav")).Play();
-                _historyService.Append(_timer.Duration);
+                _historyService.Append(_timer.Duration, _taskDescriptionEditor.SavedText);
+                _taskDescriptionEditor.ClearSavedText();
                 RefreshHistoryView();
             };
 
@@ -549,7 +552,11 @@ namespace Timer
             bool shouldShow = HistoryPanel.Visibility != Visibility.Visible;
             SettingsPanel.Visibility = Visibility.Collapsed;
             HistoryPanel.Visibility = shouldShow ? Visibility.Visible : Visibility.Collapsed;
-            if (shouldShow) RefreshHistoryView();
+            if (shouldShow)
+            {
+                RefreshHistoryView();
+                _isHistoryOpenedOnce = true;
+            }
         }
 
         private void CollapsePanels()
@@ -565,6 +572,9 @@ namespace Timer
 
             HistoryStack.Children.Clear();
             var entries = _historyService.ReadEntries().ToList();
+            TimeSpan fullTotal = TimeSpan.FromTicks(entries.Sum(entry => entry.Duration.Ticks));
+            HistoryTotalTextBlock.Text = $"Всего: {FormatShortDuration(fullTotal)}";
+
             if (entries.Count == 0)
             {
                 HistoryStack.Children.Add(new TextBlock
@@ -576,29 +586,132 @@ namespace Timer
                 return;
             }
 
-            foreach (var group in entries.GroupBy(entry => entry.Start.Date).OrderByDescending(group => group.Key))
+            DateTime today = DateTime.Today;
+            foreach (var group in entries.GroupBy(entry => entry.FinishedAt.Date).OrderByDescending(group => group.Key))
             {
                 TimeSpan total = TimeSpan.FromTicks(group.Sum(entry => entry.Duration.Ticks));
-                HistoryStack.Children.Add(new TextBlock
-                {
-                    Text = $"{group.Key:dd.MM.yyyy} наработано {total.TotalHours.ToString("0.00", CultureInfo.InvariantCulture)} часов",
-                    FontWeight = FontWeights.SemiBold,
-                    Margin = new Thickness(0, 0, 0, 6)
-                });
+                var taskStack = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
 
-                foreach (var entry in group.OrderByDescending(entry => entry.Start))
+                foreach (var entry in group.OrderByDescending(entry => entry.FinishedAt))
                 {
-                    HistoryStack.Children.Add(new TextBlock
-                    {
-                        Text = $"В {entry.Start:HH:mm} - {FormatDurationText(entry.Duration)}",
-                        Foreground = (Brush)FindResource("MutedTextBrush"),
-                        Margin = new Thickness(12, 0, 0, 4)
-                    });
+                    taskStack.Children.Add(CreateHistoryTaskRow(entry));
                 }
+
+                HistoryStack.Children.Add(CreateHistoryDayBlock(
+                    group.Key,
+                    FormatHistoryDate(group.Key, today),
+                    FormatShortDuration(total),
+                    taskStack,
+                    GetHistoryDayExpanded(group.Key, today)));
             }
         }
 
-        private static string FormatDurationText(TimeSpan duration)
+        private bool GetHistoryDayExpanded(DateTime day, DateTime today)
+        {
+            if (_historyExpandedDays.TryGetValue(day, out bool isExpanded))
+                return isExpanded;
+
+            return !_isHistoryOpenedOnce && day == today;
+        }
+
+        private Border CreateHistoryDayBlock(
+            DateTime day,
+            string dateText,
+            string totalText,
+            StackPanel taskStack,
+            bool isExpanded)
+        {
+            var header = new Grid();
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            header.Children.Add(new TextBlock
+            {
+                Text = dateText,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = (Brush)FindResource("PrimaryTextBrush")
+            });
+
+            var totalBlock = new TextBlock
+            {
+                Text = totalText,
+                Foreground = (Brush)FindResource("MutedTextBrush"),
+                Margin = new Thickness(12, 0, 0, 0)
+            };
+            Grid.SetColumn(totalBlock, 1);
+            header.Children.Add(totalBlock);
+
+            var expander = new Expander
+            {
+                Header = header,
+                Content = taskStack,
+                IsExpanded = isExpanded,
+                Foreground = (Brush)FindResource("PrimaryTextBrush"),
+                HorizontalContentAlignment = System.Windows.HorizontalAlignment.Stretch
+            };
+            expander.Expanded += (_, _) => _historyExpandedDays[day] = true;
+            expander.Collapsed += (_, _) => _historyExpandedDays[day] = false;
+
+            return new Border
+            {
+                Background = (Brush)FindResource("AppBackgroundBrush"),
+                BorderBrush = (Brush)FindResource("PanelBorderBrush"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(8),
+                Margin = new Thickness(0, 0, 0, 8),
+                Child = expander
+            };
+        }
+
+        private Grid CreateHistoryTaskRow(HistoryEntry entry)
+        {
+            var row = new Grid { Margin = new Thickness(0, 0, 0, 6) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            row.Children.Add(new TextBlock
+            {
+                Text = entry.FinishedAt.ToString("HH:mm", CultureInfo.InvariantCulture),
+                Foreground = (Brush)FindResource("MutedTextBrush"),
+                Margin = new Thickness(0, 0, 8, 0)
+            });
+
+            var description = new TextBlock
+            {
+                Text = FormatHistoryDescription(entry.Description),
+                Foreground = (Brush)FindResource("PrimaryTextBrush"),
+                TextTrimming = TextTrimming.CharacterEllipsis
+            };
+            Grid.SetColumn(description, 1);
+            row.Children.Add(description);
+
+            var duration = new TextBlock
+            {
+                Text = FormatShortDuration(entry.Duration),
+                Foreground = (Brush)FindResource("MutedTextBrush"),
+                Margin = new Thickness(8, 0, 0, 0)
+            };
+            Grid.SetColumn(duration, 2);
+            row.Children.Add(duration);
+
+            return row;
+        }
+
+        private static string FormatHistoryDate(DateTime date, DateTime today)
+        {
+            string dateText = $"{date.Day} {GetMonthName(date.Month)}";
+            if (date.Date == today)
+                return $"Сегодня, {dateText}";
+
+            if (date.Date == today.AddDays(-1))
+                return $"Вчера, {dateText}";
+
+            return dateText;
+        }
+
+        private static string FormatShortDuration(TimeSpan duration)
         {
             int totalMinutes = (int)Math.Round(duration.TotalMinutes);
             if (duration > TimeSpan.Zero && totalMinutes == 0) totalMinutes = 1;
@@ -608,42 +721,46 @@ namespace Timer
 
             if (hours == 0)
             {
-                return $"{minutes} {GetMinuteWord(minutes)}";
+                return $"{minutes} мин";
             }
 
             if (minutes == 0)
             {
-                return $"{hours} {GetHourWord(hours)}";
+                return $"{hours} ч";
             }
 
-            return $"{hours} {GetHourWord(hours)} {minutes} {GetMinuteWord(minutes)}";
+            return $"{hours} ч {minutes} мин";
         }
 
-        private static string GetHourWord(int value)
+        private static string FormatHistoryDescription(string description)
         {
-            int lastTwo = value % 100;
-            int last = value % 10;
-            if (lastTwo is >= 11 and <= 14) return "часов";
+            if (string.IsNullOrWhiteSpace(description))
+                return "Без описания";
 
-            return last switch
-            {
-                1 => "час",
-                >= 2 and <= 4 => "часа",
-                _ => "часов"
-            };
+            return description
+                .Replace('\r', ' ')
+                .Replace('\n', ' ')
+                .Replace('\t', ' ')
+                .Trim();
         }
 
-        private static string GetMinuteWord(int value)
+        private static string GetMonthName(int month)
         {
-            int lastTwo = value % 100;
-            int last = value % 10;
-            if (lastTwo is >= 11 and <= 14) return "минут";
-
-            return last switch
+            return month switch
             {
-                1 => "минута",
-                >= 2 and <= 4 => "минуты",
-                _ => "минут"
+                1 => "января",
+                2 => "февраля",
+                3 => "марта",
+                4 => "апреля",
+                5 => "мая",
+                6 => "июня",
+                7 => "июля",
+                8 => "августа",
+                9 => "сентября",
+                10 => "октября",
+                11 => "ноября",
+                12 => "декабря",
+                _ => string.Empty
             };
         }
 
