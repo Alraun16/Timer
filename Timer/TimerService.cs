@@ -13,9 +13,10 @@ namespace Timer
         public TimeSpan Remaining => _remaining;
 
 
-        public bool _isIdle = true;
-        public bool _isRunning;
-        public bool _isPaused;
+        // Состояние таймера открыто наружу только для чтения.
+        public bool IsIdle { get; private set; } = true;
+        public bool IsRunning { get; private set; }
+        public bool IsPaused { get; private set; }
 
         public event Action<TimeSpan>? Tick;
         public event Action? Completed;
@@ -37,26 +38,26 @@ namespace Timer
             if (_remaining <= TimeSpan.Zero)
                 return;
 
-            _isRunning = true;
-            _isPaused = false;
-            _isIdle = false;
+            IsRunning = true;
+            IsPaused = false;
+            IsIdle = false;
             _lastTickUtc = DateTime.UtcNow;
         }
 
         public void Pause()
         {
-            if (!_isRunning)
+            if (!IsRunning)
                 return;
 
-            _isRunning = false;
-            _isPaused = true;
+            IsRunning = false;
+            IsPaused = true;
         }
 
         public void Reset()
         {
-            _isRunning = false;
-            _isPaused = false;
-            _isIdle = true;
+            IsRunning = false;
+            IsPaused = false;
+            IsIdle = true;
             _remaining = _duration;
 
             Tick?.Invoke(_remaining);
@@ -64,7 +65,7 @@ namespace Timer
 
         public void Finish()
         {
-            if (_isIdle) return;
+            if (IsIdle) return;
 
             Complete();
         }
@@ -75,7 +76,7 @@ namespace Timer
 
         public void UpdateTick()
         {
-            if (!_isRunning)
+            if (!IsRunning)
                 return;
 
             var now = DateTime.UtcNow;
@@ -97,7 +98,7 @@ namespace Timer
 
         public void TogglePlayPause()
         {
-            if (_isRunning)
+            if (IsRunning)
             {
                 Pause();
             }
@@ -109,9 +110,9 @@ namespace Timer
 
         private void Complete()
         {
-            _isRunning = false;
-            _isPaused = false;
-            _isIdle = true;
+            IsRunning = false;
+            IsPaused = false;
+            IsIdle = true;
             _remaining = TimeSpan.Zero;
 
             Tick?.Invoke(_remaining);

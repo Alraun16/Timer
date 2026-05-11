@@ -45,9 +45,9 @@ namespace Timer
             Interval = TimeSpan.FromMilliseconds(100)
         };
 
-        private bool IsTimerRunning => _timer._isRunning;
-        private bool IsTimerPaused => _timer._isPaused;
-        private bool IsTimerIdle => _timer._isIdle;
+        private bool IsTimerRunning => _timer.IsRunning;
+        private bool IsTimerPaused => _timer.IsPaused;
+        private bool IsTimerIdle => _timer.IsIdle;
         private bool IsTimerCompleted => IsTimerIdle && _timer.Remaining <= TimeSpan.Zero;
 
         private readonly List<OverlayWindow> _overlayWindows = new();
