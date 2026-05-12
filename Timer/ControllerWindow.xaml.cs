@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
+using System.Collections.Generic;
 using System.Linq;
 using System.Media;
 using System.Runtime.InteropServices;
@@ -14,7 +14,6 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
 using ComboBox = System.Windows.Controls.ComboBox;
-using Drawing = System.Drawing;
 using TextBox = System.Windows.Controls.TextBox;
 using WinForms = System.Windows.Forms;
 using Button = System.Windows.Controls.Button;
@@ -48,9 +47,6 @@ namespace Timer
         private bool IsTimerIdle => _timer.IsIdle;
         private bool IsTimerCompleted => IsTimerIdle && _timer.Remaining <= TimeSpan.Zero;
 
-        private readonly Dictionary<TimerIconState, Drawing.Icon> _notifyIcons = new();
-
-        private WinForms.NotifyIcon? _notifyIcon;
         private HwndSource? _hwndSource;
         private OverlayWindow? _overlayWindow;
 
@@ -58,6 +54,7 @@ namespace Timer
         private bool _isLoadingSettings;
         private TaskDescriptionEditor _taskDescriptionEditor = null!;
         private HistoryPanel _historyPanel = null!;
+        private AppIconController _appIconController = null!;
 
 
         private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e)
@@ -134,7 +131,7 @@ namespace Timer
                 UpdateTimeDisplay();
                 UpdateButtonStates();
                 UpdateMainPanelVisibility();
-                UpdateIcon(TimerIconState.Finished);
+                UpdateIcon(AppIconState.Idle);
 
                 new System.Media.SoundPlayer(AppFile("Sounds/reminder.wav")).Play();
                 _historyService.Append(_timer.Duration, _taskDescriptionEditor.SavedText);
@@ -144,13 +141,19 @@ namespace Timer
 
             _tickTimer.Tick += (_, _) => _timer.UpdateTick();
 
-            InitializeTrayIcon();
+            _appIconController = new AppIconController(
+                this,
+                AppFile("Icons"),
+                RestoreFromTray,
+                () => PlayPauseButton_Click(this, new RoutedEventArgs()),
+                () => ResetButton_Click(this, new RoutedEventArgs()),
+                Close);
             PopulateScreens();
             PopulateHotkeySelectors();
             LoadSettings();
             UpdateTimeDisplay();
             UpdateButtonStates();
-            UpdateIcon(TimerIconState.Idle);
+            UpdateIcon(AppIconState.Idle);
             UpdateMainPanelVisibility();
 
             _tickTimer.Start();
@@ -174,57 +177,8 @@ namespace Timer
         [DllImport("user32.dll")]
         private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern bool DestroyIcon(IntPtr hIcon);
-
         private static string AppFile(string fileName)
             => Path.Combine(AppContext.BaseDirectory, fileName);
-
-        private void InitializeTrayIcon()
-        {
-            LoadNotifyIcon(TimerIconState.Idle, "icon_idle.png");
-            LoadNotifyIcon(TimerIconState.Paused, "icon_paused.png");
-            LoadNotifyIcon(TimerIconState.Running, "icon_running.png");
-            LoadNotifyIcon(TimerIconState.Finished, "icon_finished.png");
-
-            _notifyIcon = new WinForms.NotifyIcon
-            {
-                Text = "Timer",
-                Visible = true,
-                Icon = GetNotifyIcon(TimerIconState.Idle),
-                ContextMenuStrip = new WinForms.ContextMenuStrip()
-            };
-            _notifyIcon.ContextMenuStrip.Items.Add("Show", null, (_, _) => RestoreFromTray());
-
-            _notifyIcon.ContextMenuStrip.Items.Add("Play / Pause", null,
-                (_, _) => PlayPauseButton_Click(this, new RoutedEventArgs()));
-
-            _notifyIcon.ContextMenuStrip.Items.Add("Reset", null,
-                (_, _) => ResetButton_Click(this, new RoutedEventArgs()));
-
-            _notifyIcon.ContextMenuStrip.Items.Add(new ToolStripSeparator());
-
-            _notifyIcon.ContextMenuStrip.Items.Add("Exit", null, (_, _) => Close());
-            _notifyIcon.DoubleClick += (_, _) => RestoreFromTray();
-        }
-
-        private void LoadNotifyIcon(TimerIconState state, string fileName)
-        {
-            string path = AppFile(Path.Combine("Icons", fileName));
-            if (!File.Exists(path)) return;
-
-            using var bitmap = new Drawing.Bitmap(path);
-            IntPtr handle = bitmap.GetHicon();
-            _notifyIcons[state] = (Drawing.Icon)Drawing.Icon.FromHandle(handle).Clone();
-            DestroyIcon(handle);
-        }
-
-        private Drawing.Icon GetNotifyIcon(TimerIconState state)
-        {
-            if (_notifyIcons.TryGetValue(state, out var icon)) return icon;
-            if (_notifyIcons.TryGetValue(TimerIconState.Idle, out var idleIcon)) return idleIcon;
-            return Drawing.SystemIcons.Application;
-        }
 
         private void PopulateScreens()
         {
@@ -422,7 +376,7 @@ namespace Timer
             if (IsTimerRunning)
             {
                 _timer.Pause();
-                UpdateIcon(TimerIconState.Paused);
+                UpdateIcon(AppIconState.Paused);
                 UpdateButtonStates();
                 UpdateMainPanelVisibility();
                 return;
@@ -434,7 +388,7 @@ namespace Timer
             }
 
             _timer.Start();
-            UpdateIcon(TimerIconState.Running);
+            UpdateIcon(AppIconState.Running);
             UpdateButtonStates();
             UpdateMainPanelVisibility();
         }
@@ -451,7 +405,7 @@ namespace Timer
 
             UpdateTimeDisplay();
             UpdateButtonStates();
-            UpdateIcon(TimerIconState.Idle);
+            UpdateIcon(AppIconState.Idle);
             UpdateMainPanelVisibility();
         }
 
@@ -514,7 +468,7 @@ namespace Timer
             ApplyDurationFromInputs(resetRemaining: true);
             UpdateTimeDisplay();
             UpdateButtonStates();
-            UpdateIcon(TimerIconState.Idle);
+            UpdateIcon(AppIconState.Idle);
         }
 
         private void DurationTextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
@@ -632,23 +586,9 @@ namespace Timer
                 : "pack://application:,,,/Icons/icon-play.png", UriKind.Absolute));
         }
 
-        private void UpdateIcon(TimerIconState state)
+        private void UpdateIcon(AppIconState state)
         {
-            string fileName = state switch
-            {
-                TimerIconState.Paused => "icon_paused.png",
-                TimerIconState.Running => "icon_running.png",
-                TimerIconState.Finished => "icon_finished.png",
-                _ => "icon_idle.png"
-            };
-
-            var image = new BitmapImage(new Uri($"pack://application:,,,/Icons/{fileName}", UriKind.Absolute));
-            Icon = image;
-
-            if (_notifyIcon != null)
-            {
-                _notifyIcon.Icon = GetNotifyIcon(state);
-            }
+            _appIconController.SetState(state);
         }
 
         private void Window_StateChanged(object sender, EventArgs e)
@@ -656,10 +596,7 @@ namespace Timer
             if (WindowState != WindowState.Minimized) return;
 
             Hide();
-            if (_notifyIcon != null)
-            {
-                _notifyIcon.Visible = true;
-            }
+            _appIconController.ShowTrayIcon();
         }
 
         private void RestoreFromTray()
@@ -677,20 +614,7 @@ namespace Timer
 
             _tickTimer.Stop();
             _overlayWindow?.Close();
-            _notifyIcon?.Dispose();
-
-            foreach (var icon in _notifyIcons.Values)
-            {
-                icon.Dispose();
-            }
-        }
-
-        private enum TimerIconState
-        {
-            Idle,
-            Paused,
-            Running,
-            Finished
+            _appIconController.Dispose();
         }
     }
 }
