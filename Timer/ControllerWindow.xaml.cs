@@ -89,6 +89,7 @@ namespace Timer
                 _taskDescriptionEditor.MarkFocusCleared();
 
             Keyboard.ClearFocus();
+            RootGrid.Focus();
 
             if (focusedTextBox == TaskDescriptionTextBox)
                 _taskDescriptionEditor.UpdateStateLater();
@@ -290,11 +291,10 @@ namespace Timer
 
         private void TimeBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (sender is TextBox tb)
+            if (sender is TextBox tb && !tb.IsKeyboardFocusWithin)
             {
                 e.Handled = true;
                 tb.Focus();
-                tb.SelectAll();
             }
         }
 
@@ -311,7 +311,8 @@ namespace Timer
             if (!int.TryParse(tb.Text, out int value))
                 value = 0;
 
-            if (value > 60) value = 60;
+            int maxValue = tb == CountdownHours ? 99 : 60;
+            if (value > maxValue) value = maxValue;
             
             tb.Text = value.ToString("D2");
         }

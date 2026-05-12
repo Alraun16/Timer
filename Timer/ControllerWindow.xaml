@@ -11,7 +11,10 @@
         StateChanged="Window_StateChanged"
         PreviewMouseDown="Window_PreviewMouseDown">
 
-    <Grid Margin="14" Background="{StaticResource AppBackgroundBrush}">
+    <Grid x:Name="RootGrid"
+          Margin="14"
+          Background="{StaticResource AppBackgroundBrush}"
+          Focusable="True">
 
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
