@@ -54,9 +54,10 @@ namespace Timer
             ApplySettings(0);
         }
 
-        public void UpdateTime(string timeText)
+        public void UpdateTime(string timeText, bool isComplete)
         {
-            TimeText.Text = timeText;
+            TimeText.Text = isComplete ? "Good job." : timeText;
+            TimeText.Foreground = isComplete ? Brushes.LimeGreen : Brushes.White;
         }
 
         public void ApplySettings(double backgroundOpacity)

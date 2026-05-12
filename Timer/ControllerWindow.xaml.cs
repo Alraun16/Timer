@@ -525,7 +525,7 @@ namespace Timer
             string timeText = GetFormattedTime();
             TimeDisplay.Text = timeText;
 
-            _overlayWindow?.UpdateTime(timeText);
+            _overlayWindow?.UpdateTime(timeText, IsTimerCompleted);
         }
 
         private string GetFormattedTime() => FormatTime(_timer.Remaining);
@@ -552,7 +552,7 @@ namespace Timer
             if (_isLoadingSettings || _overlayWindow == null) return;
 
             _overlayWindow.ApplySettings((BackgroundOpacitySlider?.Value ?? 0) / 100.0);
-            _overlayWindow.UpdateTime(GetFormattedTime());
+            _overlayWindow.UpdateTime(GetFormattedTime(), IsTimerCompleted);
             _overlayWindow.PositionOnScreen(GetSelectedScreen(), GetSelectedText(PositionSelector, "Top Center"));
         }
 
