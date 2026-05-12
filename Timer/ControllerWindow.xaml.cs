@@ -134,6 +134,7 @@ namespace Timer
                 UpdateIcon(AppIconState.Idle);
 
                 new System.Media.SoundPlayer(AppFile("Sounds/reminder.wav")).Play();
+                TimerNotificationService.ShowCompleted();
                 _historyService.Append(_timer.Duration, _taskDescriptionEditor.SavedText);
                 _taskDescriptionEditor.ClearSavedText();
                 _historyPanel.Refresh();
@@ -406,6 +407,19 @@ namespace Timer
             UpdateTimeDisplay();
             UpdateButtonStates();
             UpdateIcon(AppIconState.Idle);
+            UpdateMainPanelVisibility();
+        }
+
+        internal void RepeatTimerFromNotification()
+        {
+            if (IsTimerRunning)
+                return;
+
+            _timer.Reset();
+            _timer.Start();
+            UpdateTimeDisplay();
+            UpdateButtonStates();
+            UpdateIcon(IsTimerRunning ? AppIconState.Running : AppIconState.Idle);
             UpdateMainPanelVisibility();
         }
 

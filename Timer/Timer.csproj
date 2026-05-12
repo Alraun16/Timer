@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <Nullable>enable</Nullable>
 
     <UseWPF>true</UseWPF>
@@ -17,6 +17,7 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <PublishTrimmed>false</PublishTrimmed>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableMsixTooling>true</EnableMsixTooling>
 
     <!-- Assembly metadata -->
     <Product>Timer</Product>
@@ -25,6 +26,10 @@
 	<PublishSingleFile>true</PublishSingleFile>
 	<RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.0.1" />
+  </ItemGroup>
 
   <ItemGroup>
     <Resource Include="Icons\timer_icon.ico" />
