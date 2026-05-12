@@ -22,6 +22,20 @@ Minimize Codex usage while still producing correct, reviewable code changes.
 - Never use Max or XHigh unless I explicitly request it.
 - Do not compensate for lower reasoning by running builds, tests, lint, or typecheck automatically. Ask me to run them manually.
 
+## Language and terminology
+
+- Communicate with me in Russian by default.
+- Write all user-facing explanations in Russian: summaries, change descriptions, verification notes, risks, assumptions, questions, and status messages.
+- Keep technical tokens in their original form and do not translate them:
+  - file names and paths, for example `TimerNotificationService.cs`, `F:\Timer\Timer.sln`;
+  - class, method, property, variable, namespace, enum, interface, and event names;
+  - commands, flags, environment variables, package names, API names, framework names, error codes, compiler diagnostics, and exception names;
+  - exact text from logs, build output, compiler messages, and stack traces.
+- Use Cyrillic for normal readable words intended for the user.
+- Do not write full English sections such as `Summary of changed files`, `What changed`, `Verification needed`, or `Risks or assumptions`. Use Russian equivalents.
+- Code comments should follow the existing language style of the file. If there is no clear existing style, use Russian for explanatory comments intended for humans, while keeping identifiers and technical terms in their original form.
+- User-facing UI text in the app should follow the existing app language. If the surrounding UI is Russian, write new UI text in Russian. If the surrounding UI is English, preserve English unless I ask to translate it.
+
 ## Safety rules
 
 - Never delete files without separate explicit confirmation in the same message.
@@ -67,12 +81,12 @@ Assume I can manually run builds, tests, lint, typecheck, app startup, and bug r
 
 ## After editing
 
-Return only:
+Return only these sections, in Russian:
 
-1. Summary of changed files.
-2. What changed.
-3. Verification not run, if skipped.
-4. Exact manual verification commands for me to run.
-5. Any risks or assumptions.
+1. Изменённые файлы.
+2. Что изменено.
+3. Проверка не запускалась, если была пропущена.
+4. Что запустить вручную.
+5. Риски или допущения.
 
 Be concise. Do not include long explanations unless I ask.

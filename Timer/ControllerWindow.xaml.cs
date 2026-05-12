@@ -79,15 +79,19 @@ namespace Timer
 
         private void Window_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
-            if (Keyboard.FocusedElement is not TextBox)
+            if (Keyboard.FocusedElement is not TextBox focusedTextBox)
                 return;
 
             if (e.OriginalSource is DependencyObject source && IsInsideTextBox(source))
                 return;
 
-            _taskDescriptionEditor.MarkFocusCleared();
+            if (focusedTextBox == TaskDescriptionTextBox)
+                _taskDescriptionEditor.MarkFocusCleared();
+
             Keyboard.ClearFocus();
-            _taskDescriptionEditor.UpdateStateLater();
+
+            if (focusedTextBox == TaskDescriptionTextBox)
+                _taskDescriptionEditor.UpdateStateLater();
         }
 
         private static bool IsInsideTextBox(DependencyObject? element)
@@ -134,6 +138,7 @@ namespace Timer
                 UpdateIcon(AppIconState.Idle);
 
                 new System.Media.SoundPlayer(AppFile("Sounds/reminder.wav")).Play();
+                ToastNotificationService.ShowCompleted(_timer.Duration, _taskDescriptionEditor.SavedText);
                 _historyService.Append(_timer.Duration, _taskDescriptionEditor.SavedText);
                 _taskDescriptionEditor.ClearSavedText();
                 _historyPanel.Refresh();
@@ -285,10 +290,11 @@ namespace Timer
 
         private void TimeBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (sender is TextBox tb && !tb.IsKeyboardFocusWithin)
+            if (sender is TextBox tb)
             {
                 e.Handled = true;
                 tb.Focus();
+                tb.SelectAll();
             }
         }
 
@@ -406,6 +412,19 @@ namespace Timer
             UpdateTimeDisplay();
             UpdateButtonStates();
             UpdateIcon(AppIconState.Idle);
+            UpdateMainPanelVisibility();
+        }
+
+        internal void RepeatTimerFromNotification()
+        {
+            if (IsTimerRunning)
+                return;
+
+            _timer.Reset();
+            _timer.Start();
+            UpdateTimeDisplay();
+            UpdateButtonStates();
+            UpdateIcon(IsTimerRunning ? AppIconState.Running : AppIconState.Idle);
             UpdateMainPanelVisibility();
         }
 
@@ -600,6 +619,11 @@ namespace Timer
         }
 
         private void RestoreFromTray()
+        {
+            RestoreFromExternalActivation();
+        }
+
+        internal void RestoreFromExternalActivation()
         {
             Show();
             WindowState = WindowState.Normal;

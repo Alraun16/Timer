@@ -103,7 +103,7 @@
                              PreviewMouseLeftButtonDown="TimeBox_PreviewMouseLeftButtonDown"
                              PreviewTextInput="DurationTextBox_PreviewTextInput"
                              TextChanged="CountdownDuration_TextChanged"
-                             LostFocus="CountdownDuration_LostFocus"/>
+                             LostKeyboardFocus="CountdownDuration_LostFocus"/>
 
                     <TextBlock Text=":" FontSize="35" VerticalAlignment="Center" Margin="4,-10,4,0"/>
 
@@ -114,7 +114,7 @@
                              PreviewMouseLeftButtonDown="TimeBox_PreviewMouseLeftButtonDown"
                              PreviewTextInput="DurationTextBox_PreviewTextInput"
                              TextChanged="CountdownDuration_TextChanged"
-                             LostFocus="CountdownDuration_LostFocus"/>
+                             LostKeyboardFocus="CountdownDuration_LostFocus"/>
 
                     <TextBlock Text=":" FontSize="35" VerticalAlignment="Center" Margin="4,-10,4,0"/>
 
@@ -125,7 +125,7 @@
                              PreviewMouseLeftButtonDown="TimeBox_PreviewMouseLeftButtonDown"
                              PreviewTextInput="DurationTextBox_PreviewTextInput"
                              TextChanged="CountdownDuration_TextChanged"
-                             LostFocus="CountdownDuration_LostFocus"/>
+                             LostKeyboardFocus="CountdownDuration_LostFocus"/>
 
                 </StackPanel>
 
