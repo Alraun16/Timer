@@ -518,21 +518,38 @@ namespace Timer
             SetButtonSvg(ToggleOverlayButton, fileName, 19);
         }
 
-        private void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
-        {
-            ApplyDurationFromInputs(resetRemaining: !IsTimerRunning);
-            BackgroundOpacityLabel.Text = $"{(int)BackgroundOpacitySlider.Value}%";
-            SaveSettings();
-            RegisterConfiguredHotkeys();
-            RefreshOverlay();
-            CollapsePanels();
-        }
+private void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
+{
+    TimerSettings savedSettings = _settingsService.Load();
+
+    bool overlayPlacementChanged =
+        savedSettings.ScreenIndex != GetSelectedScreenIndex()
+        || savedSettings.Position != GetSelectedText(PositionSelector, "Top Center");
+
+    ApplyDurationFromInputs(resetRemaining: !IsTimerRunning);
+    BackgroundOpacityLabel.Text = $"{(int)BackgroundOpacitySlider.Value}%";
+
+    SaveSettings();
+    RegisterConfiguredHotkeys();
+
+    ApplyOverlayBackgroundOpacity();
+    _overlayWindow?.UpdateTime(GetFormattedTime(), IsTimerCompleted);
+
+    if (overlayPlacementChanged)
+    {
+        _overlayWindow?.PositionOnScreen(
+            GetSelectedScreen(),
+            GetSelectedText(PositionSelector, "Top Center"));
+    }
+
+    CollapsePanels();
+}
 
         private void BackgroundOpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (!_uiReady) return;
             BackgroundOpacityLabel.Text = $"{(int)BackgroundOpacitySlider.Value}%";
-            RefreshOverlay();
+            ApplyOverlayBackgroundOpacity();
         }
 
         private void CountdownDuration_TextChanged(object sender, TextChangedEventArgs e)
@@ -664,9 +681,16 @@ namespace Timer
         {
             if (_isLoadingSettings || _overlayWindow == null) return;
 
-            _overlayWindow.ApplySettings((BackgroundOpacitySlider?.Value ?? 0) / 100.0);
+            ApplyOverlayBackgroundOpacity();
             _overlayWindow.UpdateTime(GetFormattedTime(), IsTimerCompleted);
             _overlayWindow.PositionOnScreen(GetSelectedScreen(), GetSelectedText(PositionSelector, "Top Center"));
+        }
+
+        private void ApplyOverlayBackgroundOpacity()
+        {
+            if (_isLoadingSettings || _overlayWindow == null) return;
+
+            _overlayWindow.ApplySettings((BackgroundOpacitySlider?.Value ?? 0) / 100.0);
         }
 
         private int GetSelectedScreenIndex()
