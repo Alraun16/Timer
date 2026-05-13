@@ -29,12 +29,15 @@
   <ItemGroup>
     <Resource Include="Icons\timer_icon.ico" />
     <Resource Include="Icons\*.png" />
+    <Resource Include="Icons\*.svg" />
+    <Resource Include="Images\Background.png" />
     <Resource Remove="Icons\icon_finished.png" />
     <Resource Remove="Icons\ыфв.png" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="Icons\*.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Icons\*.svg" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="TimerCleanup.cmd" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Remove="Icons\icon_finished.png" />
     <Content Remove="Icons\ыфв.png" />

@@ -25,6 +25,7 @@ namespace Timer
         private const int WM_HOTKEY = 0x0312;
         private const int HOTKEY_PLAY_PAUSE = 1;
         private const int HOTKEY_TOGGLE_OVERLAY = 2;
+        private const double CompactWindowHeight = 220;
 
         private static readonly string[] ModifierOptions = { "Win", "Ctrl", "Alt", "Shift", "None" };
 
@@ -111,6 +112,7 @@ namespace Timer
         public ControllerWindow()
         {
             InitializeComponent();
+            InitializeSvgIcons();
             _taskDescriptionEditor = new TaskDescriptionEditor(
                 EditPanel,
                 TaskDescriptionTextBox,
@@ -163,6 +165,39 @@ namespace Timer
             UpdateMainPanelVisibility();
 
             _tickTimer.Start();
+        }
+
+        private void InitializeSvgIcons()
+        {
+            SetButtonSvg(ResetButton, "icon-reset.svg", 40);
+            SetButtonSvg(EditButton, "icon-edit.svg", 40);
+            SetButtonSvg(FinishButton, "icon-finish.svg", 40);
+            SetButtonSvg(HistoryButton, "icon-history.svg", 30);
+            SetButtonSvg(SettingsButton, "icon-settings.svg", 30);
+            UpdateOverlayButtonState();
+        }
+
+        private static void SetButtonSvg(Button button, string fileName, double size)
+        {
+            string path = AppFile(Path.Combine("Icons", fileName));
+            button.Content = new System.Windows.Controls.Image
+            {
+                Source = SvgIconRenderer.Render(path, (int)Math.Ceiling(size * 2)),
+                Width = size,
+                Height = size,
+                Stretch = Stretch.Uniform
+            };
+        }
+
+        private static void SetButtonPng(Button button, string fileName, double size)
+        {
+            button.Content = new System.Windows.Controls.Image
+            {
+                Source = new BitmapImage(new Uri($"pack://application:,,,/Icons/{fileName}", UriKind.Absolute)),
+                Width = size,
+                Height = size,
+                Stretch = Stretch.Uniform
+            };
         }
 
         protected override void OnSourceInitialized(EventArgs e)
@@ -432,7 +467,11 @@ namespace Timer
         private void EditButton_Click(object sender, RoutedEventArgs e)
         {
             SettingsPanel.Visibility = Visibility.Collapsed;
+            HistoryPanel.Visibility = Visibility.Collapsed;
+            ExpandWindowToContent();
             _taskDescriptionEditor.Toggle();
+            if (EditPanel.Visibility != Visibility.Visible)
+                CompactWindow();
         }
 
         private void CancelTaskDescriptionButton_Click(object sender, RoutedEventArgs e)
@@ -451,6 +490,7 @@ namespace Timer
             {
                 _overlayWindow.Close();
                 _overlayWindow = null;
+                UpdateOverlayButtonState();
                 return;
             }
 
@@ -459,9 +499,23 @@ namespace Timer
             _overlayWindow.FinishRequested += (_, _) => FinishButton_Click(this, new RoutedEventArgs());
             _overlayWindow.ResetRequested += (_, _) => ResetButton_Click(this, new RoutedEventArgs());
             _overlayWindow.ExitRequested += (_, _) => Close();
-            _overlayWindow.Closed += (_, _) => _overlayWindow = null;
+            _overlayWindow.Closed += (_, _) =>
+            {
+                _overlayWindow = null;
+                UpdateOverlayButtonState();
+            };
             RefreshOverlay();
             _overlayWindow.Show();
+            UpdateOverlayButtonState();
+        }
+
+        private void UpdateOverlayButtonState()
+        {
+            bool isOverlayVisible = _overlayWindow != null;
+            string fileName = isOverlayVisible
+                ? "icon-show.svg"
+                : "icon-hide.svg";
+            SetButtonSvg(ToggleOverlayButton, fileName, 19);
         }
 
         private void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
@@ -500,18 +554,30 @@ namespace Timer
         {
             bool shouldShow = SettingsPanel.Visibility != Visibility.Visible;
             CollapsePanels();
+            if (shouldShow)
+                ExpandWindowToContent();
+
             SettingsPanel.Visibility = shouldShow ? Visibility.Visible : Visibility.Collapsed;
+            if (!shouldShow)
+                CompactWindow();
         }
 
         private void HistoryButton_Click(object sender, RoutedEventArgs e)
         {
             bool shouldShow = HistoryPanel.Visibility != Visibility.Visible;
+            if (shouldShow)
+                ExpandWindowToContent();
+
             SettingsPanel.Visibility = Visibility.Collapsed;
             HistoryPanel.Visibility = shouldShow ? Visibility.Visible : Visibility.Collapsed;
             if (shouldShow)
             {
                 _historyPanel.Refresh();
                 _historyPanel.MarkOpened();
+            }
+            else
+            {
+                CompactWindow();
             }
         }
 
@@ -520,6 +586,33 @@ namespace Timer
             _taskDescriptionEditor.Collapse();
             SettingsPanel.Visibility = Visibility.Collapsed;
             HistoryPanel.Visibility = Visibility.Collapsed;
+            CompactWindow();
+        }
+
+        private void CompactWindow()
+        {
+            MinHeight = CompactWindowHeight;
+            Height = double.NaN;
+            SizeToContent = SizeToContent.Height;
+            Dispatcher.BeginInvoke(() =>
+            {
+                InvalidateMeasure();
+                UpdateLayout();
+                SizeToContent = SizeToContent.Height;
+            }, DispatcherPriority.Background);
+        }
+
+        private void ExpandWindowToContent()
+        {
+            Height = double.NaN;
+            MinHeight = 220;
+            SizeToContent = SizeToContent.Height;
+            Dispatcher.BeginInvoke(() =>
+            {
+                InvalidateMeasure();
+                UpdateLayout();
+                SizeToContent = SizeToContent.Height;
+            }, DispatcherPriority.Background);
         }
 
         private void ApplyDurationFromInputs(bool resetRemaining)
@@ -601,9 +694,10 @@ namespace Timer
                 !IsTimerCompleted &&
                 (IsTimerRunning || _timer.Remaining < _timer.Duration);
 
-            PlayPauseIcon.Source = new BitmapImage(new Uri(IsTimerRunning
-                ? "pack://application:,,,/Icons/icon-pause.png"
-                : "pack://application:,,,/Icons/icon-play.png", UriKind.Absolute));
+            if (IsTimerRunning)
+                SetButtonSvg(PlayPauseButton, "icon-pause.svg", 40);
+            else
+                SetButtonSvg(PlayPauseButton, "icon-play.svg", 40);
         }
 
         private void UpdateIcon(AppIconState state)

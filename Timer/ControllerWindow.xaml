@@ -2,8 +2,10 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Timer"
-        Width="360"
+        Width="450"
         SizeToContent="Height"
+        MaxHeight="1000"
+        MinHeight="220"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         ResizeMode="CanMinimize"
@@ -12,67 +14,105 @@
         PreviewMouseDown="Window_PreviewMouseDown">
 
     <Grid x:Name="RootGrid"
-          Margin="14"
           Background="{StaticResource AppBackgroundBrush}"
           Focusable="True">
 
         <Grid.RowDefinitions>
+            <RowDefinition Height="42"/>
             <RowDefinition Height="Auto"/>
-            <!-- TITLE BAR -->
             <RowDefinition Height="Auto"/>
-            <!-- TIMER -->
             <RowDefinition Height="Auto"/>
-            <!-- CONTROLS -->
             <RowDefinition Height="Auto"/>
-            <!-- EDIT -->
             <RowDefinition Height="Auto"/>
-            <!-- SETTINGS BUTTONS -->
-            <RowDefinition Height="Auto"/>
-            <!-- SETTINGS/HISTORY -->
         </Grid.RowDefinitions>
 
         <!-- ================= TITLE BAR ================= -->
-        <Border Grid.Row="0"
-                Background="{StaticResource AppBackgroundBrush}"
-                BorderBrush="{StaticResource PanelBorderBrush}"
-                BorderThickness="0"
-                CornerRadius="8"
-                Padding="10,6"
-                MouseDown="TitleBar_MouseDown">
-
-            <Grid Height="28">
+        <Grid Grid.Row="0"
+              Background="Transparent"
+              Margin="10,8,10,0"
+              MouseDown="TitleBar_MouseDown">
 
                 <StackPanel Orientation="Horizontal"
                             HorizontalAlignment="Right"
-                            VerticalAlignment="Center">
+                            VerticalAlignment="Top">
 
                     <Button x:Name="ToggleOverlayButton"
-                            Width="30"
-                            Height="22"
-                            Margin="0,0,6,0"
+                            Style="{StaticResource WindowButton}"
+                            Margin="0,0,8,0"
                             Click="ToggleOverlayButton_Click"
                             ToolTip="Оверлей">
-                        <Image Source="pack://application:,,,/Icons/icon-overlay.png"
-                               Width="16"
-                               Height="16"
-                               VerticalAlignment="Center"
-                               HorizontalAlignment="Center"/>
+                        <Grid Width="19" Height="19">
+                            <Viewbox x:Name="ShowOverlayIcon">
+                                <Canvas Width="24" Height="24">
+                                    <Path Data="M2.2 12C4.6 8.55 8.02 6.5 12 6.5C15.98 6.5 19.4 8.55 21.8 12C19.4 15.45 15.98 17.5 12 17.5C8.02 17.5 4.6 15.45 2.2 12Z"
+                                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          StrokeThickness="1.4"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round"/>
+                                    <Ellipse Canvas.Left="8.85"
+                                             Canvas.Top="8.85"
+                                             Width="6.3"
+                                             Height="6.3"
+                                             Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                             StrokeThickness="1.4"/>
+                                </Canvas>
+                            </Viewbox>
+                            <Viewbox x:Name="HideOverlayIcon" Visibility="Collapsed">
+                                <Canvas Width="24" Height="24">
+                                    <Path Data="M2.2 12C4.6 8.55 8.02 6.5 12 6.5C15.98 6.5 19.4 8.55 21.8 12C19.4 15.45 15.98 17.5 12 17.5C8.02 17.5 4.6 15.45 2.2 12Z"
+                                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          StrokeThickness="1.4"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round"/>
+                                    <Ellipse Canvas.Left="8.85"
+                                             Canvas.Top="8.85"
+                                             Width="6.3"
+                                             Height="6.3"
+                                             Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                             StrokeThickness="1.4"/>
+                                    <Path Data="M4 20L20 4"
+                                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          StrokeThickness="1.8"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Grid>
                     </Button>
 
-                    <Button Content="—"
-                            Width="30"
-                            Height="22"
-                            Margin="0,0,6,0"
-                            Click="Minimize_Click"/>
-                    <Button Content="✕"
-                            Width="30"
-                            Height="22"
-                            Click="Close_Click"/>
+                    <Button Style="{StaticResource WindowButton}"
+                            Margin="0,0,8,0"
+                            Click="Minimize_Click">
+                        <Grid Width="22" Height="22">
+                            <Path Data="M4 11H18"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="3.2"
+                                  StrokeStartLineCap="Square"
+                                  StrokeEndLineCap="Square"
+                                  VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+                    <Button Style="{StaticResource WindowButton}"
+                            Click="Close_Click">
+                        <Grid Width="22" Height="22">
+                            <Path Data="M5 5L17 17"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="3.2"
+                                  StrokeStartLineCap="Square"
+                                  StrokeEndLineCap="Square"/>
+                            <Path Data="M17 5L5 17"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="3.2"
+                                  StrokeStartLineCap="Square"
+                                  StrokeEndLineCap="Square"/>
+                        </Grid>
+                    </Button>
 
                 </StackPanel>
 
             </Grid>
-        </Border>
 
         <!-- ================= TIMER ================= -->
         <Border Grid.Row="1"
@@ -80,26 +120,40 @@
                 BorderBrush="{StaticResource PanelBorderBrush}"
                 BorderThickness="1"
                 CornerRadius="8"
-                Padding="12,8"
-                Margin="0,0,0,10">
+                Padding="26,18"
+                Width="360"
+                HorizontalAlignment="Center"
+                Effect="{StaticResource PanelShadowEffect}"
+                Margin="0,10,0,12">
 
-            <Grid Height="54">
+            <Grid Height="92">
 
                 <TextBlock x:Name="TimeDisplay"
                            Text="00:05:00"
-                           FontSize="34"
-                           FontFamily="Courier New"
-                           FontWeight="Bold"
+                           FontSize="50"
+                           FontFamily="Segoe UI Light"
+                           FontWeight="Normal"
                            Foreground="{StaticResource PrimaryTextBrush}"
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"/>
 
-                <StackPanel x:Name="DurationPanel"
-                            Orientation="Horizontal"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center">
+                <Grid x:Name="DurationPanel"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="82"/>
+                        <ColumnDefinition Width="24"/>
+                        <ColumnDefinition Width="82"/>
+                        <ColumnDefinition Width="24"/>
+                        <ColumnDefinition Width="82"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="58"/>
+                        <RowDefinition Height="28"/>
+                    </Grid.RowDefinitions>
 
                     <TextBox x:Name="CountdownHours"
+                             Grid.Column="0"
                              Text="0"
                              Style="{StaticResource DurationTextBox}"
                              GotFocus="TimeBox_GotFocus"
@@ -107,10 +161,25 @@
                              PreviewTextInput="DurationTextBox_PreviewTextInput"
                              TextChanged="CountdownDuration_TextChanged"
                              LostKeyboardFocus="CountdownDuration_LostFocus"/>
+                    <TextBlock Grid.Row="1"
+                               Grid.Column="0"
+                               Text="ЧАСЫ"
+                               FontSize="13"
+                               Foreground="{StaticResource MutedTextBrush}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Bottom"/>
 
-                    <TextBlock Text=":" FontSize="35" VerticalAlignment="Center" Margin="4,-10,4,0"/>
+                    <TextBlock Grid.Column="1"
+                               Text=":"
+                               FontSize="34"
+                               FontFamily="Segoe UI Light"
+                               Foreground="{StaticResource MutedTextBrush}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Top"
+                               Margin="0,6,0,0"/>
 
                     <TextBox x:Name="CountdownMinutes"
+                             Grid.Column="2"
                              Text="60"
                              Style="{StaticResource DurationTextBox}"
                              GotFocus="TimeBox_GotFocus"
@@ -118,10 +187,25 @@
                              PreviewTextInput="DurationTextBox_PreviewTextInput"
                              TextChanged="CountdownDuration_TextChanged"
                              LostKeyboardFocus="CountdownDuration_LostFocus"/>
+                    <TextBlock Grid.Row="1"
+                               Grid.Column="2"
+                               Text="МИНУТЫ"
+                               FontSize="13"
+                               Foreground="{StaticResource MutedTextBrush}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Bottom"/>
 
-                    <TextBlock Text=":" FontSize="35" VerticalAlignment="Center" Margin="4,-10,4,0"/>
+                    <TextBlock Grid.Column="3"
+                               Text=":"
+                               FontSize="34"
+                               FontFamily="Segoe UI Light"
+                               Foreground="{StaticResource MutedTextBrush}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Top"
+                               Margin="0,6,0,0"/>
 
                     <TextBox x:Name="CountdownSeconds"
+                             Grid.Column="4"
                              Text="00"
                              Style="{StaticResource DurationTextBox}"
                              GotFocus="TimeBox_GotFocus"
@@ -129,8 +213,15 @@
                              PreviewTextInput="DurationTextBox_PreviewTextInput"
                              TextChanged="CountdownDuration_TextChanged"
                              LostKeyboardFocus="CountdownDuration_LostFocus"/>
+                    <TextBlock Grid.Row="1"
+                               Grid.Column="4"
+                               Text="СЕКУНДЫ"
+                               FontSize="13"
+                               Foreground="{StaticResource MutedTextBrush}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Bottom"/>
 
-                </StackPanel>
+                </Grid>
 
             </Grid>
         </Border>
@@ -139,49 +230,27 @@
         <StackPanel Grid.Row="2"
                     Orientation="Horizontal"
                     HorizontalAlignment="Center"
-                    Margin="0,0,0,8">
+                    Margin="0,0,0,14">
 
             <Button x:Name="ResetButton"
                     Style="{StaticResource DangerIconButton}"
                     Click="ResetButton_Click"
-                    Margin="0,0,8,0">
-                <Image Source="pack://application:,,,/Icons/icon-reset.png"
-                       Width="38"
-                       Height="38"/>
-            </Button>
+                    Margin="0,0,18,0"/>
 
             <Button x:Name="EditButton"
                     Style="{StaticResource IconButton}"
                     Click="EditButton_Click"
-                    Margin="0,0,8,0"
-                    ToolTip="Edit">
-                <Viewbox Width="38" Height="38">
-                    <Grid Width="1024" Height="1024">
-                        <Path Fill="#D9D9D9"
-                              Data="M761.1 288.3L687.8 215 325.1 577.6l-15.6 89 88.9-15.7z"/>
-                        <Path Fill="#D9D9D9"
-                              Data="M880 836H144c-17.7 0-32 14.3-32 32v36c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-36c0-17.7-14.3-32-32-32zm-622.3-84c2 0 4-.2 6-.5L431.9 722c2-.4 3.9-1.3 5.3-2.8l423.9-423.9a9.96 9.96 0 0 0 0-14.1L694.9 114.9c-1.9-1.9-4.4-2.9-7.1-2.9s-5.2 1-7.1 2.9L256.8 538.8c-1.5 1.5-2.4 3.3-2.8 5.3l-29.5 168.2a33.5 33.5 0 0 0 9.4 29.8c6.6 6.4 14.9 9.9 23.8 9.9zm67.4-174.4L687.8 215l73.3 73.3-362.7 362.6-88.9 15.7 15.6-89z"/>
-                    </Grid>
-                </Viewbox>
-            </Button>
+                    Margin="0,0,18,0"
+                    ToolTip="Edit"/>
 
             <Button x:Name="PlayPauseButton"
                     Style="{StaticResource PrimaryIconButton}"
                     Click="PlayPauseButton_Click"
-                    Margin="0,0,8,0">
-                <Image x:Name="PlayPauseIcon"
-                       Source="pack://application:,,,/Icons/icon-play.png"
-                       Width="38"
-                       Height="38"/>
-            </Button>
+                    Margin="0,0,18,0"/>
 
             <Button x:Name="FinishButton"
                     Style="{StaticResource IconButton}"
-                    Click="FinishButton_Click">
-                <Image Source="pack://application:,,,/Icons/icon-finish.png"
-                       Width="38"
-                       Height="38"/>
-            </Button>
+                    Click="FinishButton_Click"/>
 
         </StackPanel>
 
@@ -193,16 +262,24 @@
                 BorderBrush="{StaticResource PanelBorderBrush}"
                 BorderThickness="1"
                 CornerRadius="8"
-                Padding="12"
-                Margin="0,0,0,8">
+                Padding="14"
+                Effect="{StaticResource PanelShadowEffect}"
+                Margin="16,0,16,12">
 
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <Grid Grid.Row="0">
+                <TextBlock Grid.Row="0"
+                           Text="Текущая задача"
+                           FontSize="18"
+                           Foreground="{StaticResource PrimaryTextBrush}"
+                           Margin="0,0,0,10"/>
+
+                <Grid Grid.Row="1">
                     <TextBox x:Name="TaskDescriptionTextBox"
                              Style="{StaticResource DescriptionTextBox}"
                              MaxLength="1000"/>
@@ -210,14 +287,14 @@
                     <TextBlock x:Name="TaskDescriptionPlaceholder"
                                Text="Краткое описание задачи..."
                                Foreground="{StaticResource MutedTextBrush}"
-                               Opacity="0.65"
-                               Margin="11,8,0,0"
+                               FontSize="18"
+                               Margin="14,9,0,0"
                                IsHitTestVisible="False"
                                HorizontalAlignment="Left"
                                VerticalAlignment="Top"/>
                 </Grid>
 
-                <Grid Grid.Row="1" Margin="0,10,0,0">
+                <Grid Grid.Row="2" Margin="0,12,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
@@ -230,14 +307,14 @@
                         <Button x:Name="CancelTaskDescriptionButton"
                                 Content="Отмена"
                                 Style="{StaticResource TextButton}"
-                                MinWidth="86"
-                                Margin="0,0,8,0"
+                                MinWidth="96"
+                                Margin="0,0,14,0"
                                 Click="CancelTaskDescriptionButton_Click"/>
 
                         <Button x:Name="SaveTaskDescriptionButton"
                                 Content="Сохранить"
                                 Style="{StaticResource TextButton}"
-                                MinWidth="86"
+                                MinWidth="112"
                                 Click="SaveTaskDescriptionButton_Click"/>
                     </StackPanel>
 
@@ -245,6 +322,7 @@
                                Grid.Column="2"
                                Text="0 / 120"
                                Foreground="{StaticResource MutedTextBrush}"
+                               FontSize="14"
                                HorizontalAlignment="Right"
                                VerticalAlignment="Center"/>
                 </Grid>
@@ -255,24 +333,16 @@
         <StackPanel Grid.Row="4"
                     Orientation="Horizontal"
                     HorizontalAlignment="Right"
-                    Margin="0,0,0,4">
+                    Margin="0,0,16,12">
 
             <Button x:Name="HistoryButton"
                     Style="{StaticResource IconButton}"
                     Click="HistoryButton_Click"
-                    Margin="0,0,2,0">
-                <Image Source="pack://application:,,,/Icons/icon-history.png"
-                       Width="34"
-                       Height="34"/>
-            </Button>
+                    Margin="0,0,8,0"/>
 
             <Button x:Name="SettingsButton"
                     Style="{StaticResource IconButton}"
-                    Click="SettingsButton_Click">
-                <Image Source="pack://application:,,,/Icons/icon-settings.png"
-                       Width="34"
-                       Height="34"/>
-            </Button>
+                    Click="SettingsButton_Click"/>
 
         </StackPanel>
 
@@ -286,8 +356,9 @@
                     BorderBrush="{StaticResource PanelBorderBrush}"
                     BorderThickness="1"
                     CornerRadius="8"
-                    Padding="12"
-                    Margin="0,4,0,0">
+                    Padding="14"
+                    Effect="{StaticResource PanelShadowEffect}"
+                    Margin="16,0,16,12">
 
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -304,11 +375,11 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Screen" Margin="0,0,12,8"/>
-                    <ComboBox Grid.Row="0" Grid.Column="1" x:Name="ScreenSelector" Margin="0,0,0,8"/>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Screen" Foreground="#C7C5C2" Margin="0,0,12,10"/>
+                    <ComboBox Grid.Row="0" Grid.Column="1" x:Name="ScreenSelector" Margin="0,0,0,10"/>
 
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Position" Margin="0,0,12,8"/>
-                    <ComboBox Grid.Row="1" Grid.Column="1" x:Name="PositionSelector" Margin="0,0,0,8">
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Position" Foreground="#C7C5C2" Margin="0,0,12,10"/>
+                    <ComboBox Grid.Row="1" Grid.Column="1" x:Name="PositionSelector" Margin="0,0,0,10">
                         <ComboBoxItem Content="Top Left"/>
                         <ComboBoxItem Content="Top Center" IsSelected="True"/>
                         <ComboBoxItem Content="Top Right"/>
@@ -317,31 +388,32 @@
                         <ComboBoxItem Content="Bottom Right"/>
                     </ComboBox>
 
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="BG" Margin="0,0,12,10"/>
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="BG" Foreground="#C7C5C2" Margin="0,0,12,10"/>
                     <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10">
                         <Slider x:Name="BackgroundOpacitySlider"
-                            Width="190"
+                            Width="220"
                             Minimum="0"
                             Maximum="100"
                             Value="50"
                             ValueChanged="BackgroundOpacitySlider_ValueChanged"/>
                         <TextBlock x:Name="BackgroundOpacityLabel"
                                    Text="0%"
-                                   Width="40"
-                                   Margin="8,0,0,0"
+                                   Foreground="#C7C5C2"
+                                   Width="42"
+                                   Margin="10,0,0,0"
                                    VerticalAlignment="Center"/>
                     </StackPanel>
 
-                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Play/Pause" Margin="0,0,12,8"/>
-                    <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
-                        <ComboBox x:Name="PlayHotkeyModifierSelector" Width="86" Margin="0,0,8,0"/>
-                        <ComboBox x:Name="PlayHotkeyKeySelector" Width="86"/>
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Play/Pause" Foreground="#C7C5C2" Margin="0,0,12,10"/>
+                    <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10">
+                        <ComboBox x:Name="PlayHotkeyModifierSelector" Width="100" Margin="0,0,10,0"/>
+                        <ComboBox x:Name="PlayHotkeyKeySelector" Width="100"/>
                     </StackPanel>
 
-                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Overlay" Margin="0,0,12,12"/>
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Overlay" Foreground="#C7C5C2" Margin="0,0,12,12"/>
                     <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,12">
-                        <ComboBox x:Name="OverlayHotkeyModifierSelector" Width="86" Margin="0,0,8,0"/>
-                        <ComboBox x:Name="OverlayHotkeyKeySelector" Width="86"/>
+                        <ComboBox x:Name="OverlayHotkeyModifierSelector" Width="100" Margin="0,0,10,0"/>
+                        <ComboBox x:Name="OverlayHotkeyKeySelector" Width="100"/>
                     </StackPanel>
 
                     <Grid Grid.Row="5" Grid.ColumnSpan="2">
@@ -350,7 +422,7 @@
                             x:Name="SaveSettingsButton"
                             Content="Сохранить"
                             Style="{StaticResource TextButton}"
-                            MinWidth="80"
+                            MinWidth="112"
                             HorizontalAlignment="Center"
                             Click="SaveSettingsButton_Click"/>
                     </Grid>
@@ -364,8 +436,10 @@
                     BorderBrush="{StaticResource PanelBorderBrush}"
                     BorderThickness="1"
                     CornerRadius="8"
-                    Padding="12"
-                    Margin="0,4,0,0">
+                    Padding="14"
+                    MaxHeight="640"
+                    Effect="{StaticResource PanelShadowEffect}"
+                    Margin="16,0,16,12">
 
                 <Grid>
                     <Grid.RowDefinitions>
@@ -373,23 +447,27 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <Grid Grid.Row="0" Margin="0,0,0,8">
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
                         <TextBlock Text="История"
-                                   FontWeight="SemiBold"/>
+                                   FontSize="18"
+                                   FontWeight="Normal"
+                                   Foreground="#C7C5C2"/>
 
                         <TextBlock x:Name="HistoryTotalTextBlock"
                                    Grid.Column="1"
                                    Text="Всего: 0 мин"
-                                   Foreground="{StaticResource MutedTextBrush}"/>
+                                   FontSize="18"
+                                   Foreground="{StaticResource PrimaryTextBrush}"/>
                     </Grid>
 
                     <ScrollViewer Grid.Row="1"
-                                  Height="250"
+                                  Style="{StaticResource HistoryScrollViewer}"
+                                  MaxHeight="570"
                                   VerticalScrollBarVisibility="Auto">
                         <StackPanel x:Name="HistoryStack"/>
                     </ScrollViewer>

@@ -37,9 +37,9 @@ namespace Timer
             _resetRequested = resetRequested;
             _exitRequested = exitRequested;
 
-            LoadNotifyIcon(AppIconState.Idle, "icon_idle.png");
-            LoadNotifyIcon(AppIconState.Paused, "icon_paused.png");
-            LoadNotifyIcon(AppIconState.Running, "icon_running.png");
+            LoadNotifyIcon(AppIconState.Idle);
+            LoadNotifyIcon(AppIconState.Paused);
+            LoadNotifyIcon(AppIconState.Running);
 
             _notifyIcon = new WinForms.NotifyIcon
             {
@@ -60,14 +60,7 @@ namespace Timer
 
         public void SetState(AppIconState state)
         {
-            string fileName = state switch
-            {
-                AppIconState.Running => "icon_running.png",
-                AppIconState.Paused => "icon_paused.png",
-                _ => "icon_idle.png"
-            };
-
-            _window.Icon = new BitmapImage(new Uri($"pack://application:,,,/Icons/{fileName}", UriKind.Absolute));
+            _window.Icon = RenderIconBitmap(state, 32, _iconsPath);
 
             if (_notifyIcon != null)
             {
@@ -93,15 +86,24 @@ namespace Timer
             }
         }
 
-        private void LoadNotifyIcon(AppIconState state, string fileName)
+        private void LoadNotifyIcon(AppIconState state)
         {
-            string path = Path.Combine(_iconsPath, fileName);
-            if (!File.Exists(path)) return;
+            using var stream = new MemoryStream();
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(RenderIconBitmap(state, 32, _iconsPath)));
+            encoder.Save(stream);
+            stream.Position = 0;
 
-            using var bitmap = new Drawing.Bitmap(path);
+            using var bitmap = new Drawing.Bitmap(stream);
             IntPtr handle = bitmap.GetHicon();
             _notifyIcons[state] = (Drawing.Icon)Drawing.Icon.FromHandle(handle).Clone();
             DestroyIcon(handle);
+        }
+
+        private static BitmapSource RenderIconBitmap(AppIconState state, int size, string iconsPath)
+        {
+            string fileName = state == AppIconState.Running ? "icon_running.svg" : "icon_timer.svg";
+            return SvgIconRenderer.Render(Path.Combine(iconsPath, fileName), size);
         }
 
         private Drawing.Icon GetNotifyIcon(AppIconState state)
