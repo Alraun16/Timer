@@ -26,6 +26,10 @@ namespace Timer
         private const int HOTKEY_PLAY_PAUSE = 1;
         private const int HOTKEY_TOGGLE_OVERLAY = 2;
         private const double CompactWindowHeight = 220;
+        private const double HistoryPanelDefaultMaxHeight = 640;
+        private const double HistoryScrollViewerDefaultMaxHeight = 570;
+        private const double HistoryPanelMinimumHeight = 180;
+        private const double HistoryScrollViewerMinimumHeight = 120;
 
         private static readonly string[] ModifierOptions = { "Win", "Ctrl", "Alt", "Shift", "None" };
 
@@ -53,6 +57,7 @@ namespace Timer
 
         private bool _uiReady;
         private bool _isLoadingSettings;
+        private bool _isUpdatingDurationInputs;
         private TaskDescriptionEditor _taskDescriptionEditor = null!;
         private HistoryPanel _historyPanel = null!;
         private AppIconController _appIconController = null!;
@@ -290,11 +295,15 @@ namespace Timer
         {
             if (_isLoadingSettings) return;
 
+            TimeSpan duration = IsTimerIdle
+                ? GetDurationFromInputs()
+                : _timer.Duration;
+
             var settings = new TimerSettings
             {
-                Hours = GetInputNumber(CountdownHours),
-                Minutes = GetInputNumber(CountdownMinutes),
-                Seconds = GetInputNumber(CountdownSeconds),
+                Hours = (int)duration.TotalHours,
+                Minutes = duration.Minutes,
+                Seconds = duration.Seconds,
                 BackgroundOpacityPercent = (int)BackgroundOpacitySlider.Value,
                 ScreenIndex = GetSelectedScreenIndex(),
                 Position = GetSelectedText(PositionSelector, "Top Center"),
@@ -444,7 +453,11 @@ namespace Timer
 
         private void ResetButton_Click(object sender, RoutedEventArgs e)
         {
-            ApplyDurationFromInputs(resetRemaining: true);
+            if (IsTimerIdle)
+            {
+                ApplyDurationFromInputs(resetRemaining: true);
+            }
+
             _timer.Reset();
 
             UpdateTimeDisplay();
@@ -469,10 +482,13 @@ namespace Timer
         private void EditButton_Click(object sender, RoutedEventArgs e)
         {
             SettingsPanel.Visibility = Visibility.Collapsed;
-            HistoryPanel.Visibility = Visibility.Collapsed;
             ExpandWindowToContent();
             _taskDescriptionEditor.Toggle();
-            if (EditPanel.Visibility != Visibility.Visible)
+
+            if (HistoryPanel.Visibility == Visibility.Visible)
+                UpdateHistoryViewportHeight();
+
+            if (EditPanel.Visibility != Visibility.Visible && HistoryPanel.Visibility != Visibility.Visible)
                 CompactWindow();
         }
 
@@ -528,7 +544,11 @@ private void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
         savedSettings.ScreenIndex != GetSelectedScreenIndex()
         || savedSettings.Position != GetSelectedText(PositionSelector, "Top Center");
 
-    ApplyDurationFromInputs(resetRemaining: !IsTimerRunning);
+    if (IsTimerIdle)
+    {
+        ApplyDurationFromInputs(resetRemaining: true);
+    }
+
     BackgroundOpacityLabel.Text = $"{(int)BackgroundOpacitySlider.Value}%";
 
     SaveSettings();
@@ -556,7 +576,7 @@ private void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
 
         private void CountdownDuration_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (!_uiReady || _isLoadingSettings || IsTimerRunning) return;
+            if (!_uiReady || _isLoadingSettings || _isUpdatingDurationInputs || !IsTimerIdle) return;
 
             ApplyDurationFromInputs(resetRemaining: true);
             UpdateTimeDisplay();
@@ -593,10 +613,14 @@ private void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
             {
                 _historyPanel.Refresh();
                 _historyPanel.MarkOpened();
+                UpdateHistoryViewportHeight();
             }
             else
             {
-                CompactWindow();
+                if (EditPanel.Visibility == Visibility.Visible)
+                    ExpandWindowToContent();
+                else
+                    CompactWindow();
             }
         }
 
@@ -634,17 +658,56 @@ private void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
             }, DispatcherPriority.Background);
         }
 
+        private void UpdateHistoryViewportHeight()
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (HistoryPanel.Visibility != Visibility.Visible)
+                    return;
+
+                double usedHeight = 0;
+                for (int i = 0; i < 5 && i < RootGrid.RowDefinitions.Count; i++)
+                {
+                    usedHeight += RootGrid.RowDefinitions[i].ActualHeight;
+                }
+
+                double panelMaxHeight = Math.Min(HistoryPanelDefaultMaxHeight, MaxHeight - usedHeight - 12);
+                if (double.IsNaN(panelMaxHeight) || panelMaxHeight <= 0)
+                    return;
+
+                panelMaxHeight = Math.Max(HistoryPanelMinimumHeight, panelMaxHeight);
+                HistoryPanel.MaxHeight = panelMaxHeight;
+
+                double headerHeight = HistoryHeader.ActualHeight
+                                   + HistoryHeader.Margin.Top
+                                   + HistoryHeader.Margin.Bottom;
+                double verticalPadding = HistoryPanel.Padding.Top + HistoryPanel.Padding.Bottom;
+                double scrollMaxHeight = panelMaxHeight - headerHeight - verticalPadding;
+
+                HistoryScrollViewer.MaxHeight = Math.Min(
+                    HistoryScrollViewerDefaultMaxHeight,
+                    Math.Max(HistoryScrollViewerMinimumHeight, scrollMaxHeight));
+
+                InvalidateMeasure();
+                UpdateLayout();
+                SizeToContent = SizeToContent.Height;
+            }, DispatcherPriority.Background);
+        }
+
         private void ApplyDurationFromInputs(bool resetRemaining)
+        {
+            _timer.SetDuration(GetDurationFromInputs(), resetRemaining);
+        }
+
+        private TimeSpan GetDurationFromInputs()
         {
             int hours = GetInputNumber(CountdownHours);
             int minutes = GetInputNumber(CountdownMinutes);
             int seconds = GetInputNumber(CountdownSeconds);
 
-            var duration = TimeSpan.FromHours(hours)
-                         + TimeSpan.FromMinutes(minutes)
-                         + TimeSpan.FromSeconds(seconds);
-
-            _timer.SetDuration(duration, resetRemaining);
+            return TimeSpan.FromHours(hours)
+                 + TimeSpan.FromMinutes(minutes)
+                 + TimeSpan.FromSeconds(seconds);
         }
 
         private static int GetInputNumber(TextBox textBox)
@@ -656,6 +719,11 @@ private void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
         {
             string timeText = GetFormattedTime();
             TimeDisplay.Text = timeText;
+
+            if (!IsTimerIdle)
+            {
+                SetDurationInputs(_timer.Remaining);
+            }
 
             _overlayWindow?.UpdateTime(timeText, IsTimerCompleted, IsTimerRunning);
         }
@@ -670,13 +738,42 @@ private void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
 
         private void UpdateMainPanelVisibility()
         {
-            DurationPanel.Visibility = IsTimerIdle
-                ? Visibility.Visible
-                : Visibility.Collapsed;
+            DurationPanel.Visibility = Visibility.Visible;
+            SetDurationInputs(IsTimerIdle ? _timer.Duration : _timer.Remaining);
+            SetDurationInputsEditable(IsTimerIdle);
 
-            TimeDisplay.Visibility = IsTimerIdle
-                ? Visibility.Collapsed
-                : Visibility.Visible;
+            TimeDisplay.Visibility = Visibility.Collapsed;
+        }
+
+        private void SetDurationInputs(TimeSpan time)
+        {
+            if (time < TimeSpan.Zero) time = TimeSpan.Zero;
+
+            _isUpdatingDurationInputs = true;
+            try
+            {
+                CountdownHours.Text = ((int)time.TotalHours).ToString("D2");
+                CountdownMinutes.Text = time.Minutes.ToString("D2");
+                CountdownSeconds.Text = time.Seconds.ToString("D2");
+            }
+            finally
+            {
+                _isUpdatingDurationInputs = false;
+            }
+        }
+
+        private void SetDurationInputsEditable(bool isEditable)
+        {
+            SetDurationInputEditable(CountdownHours, isEditable);
+            SetDurationInputEditable(CountdownMinutes, isEditable);
+            SetDurationInputEditable(CountdownSeconds, isEditable);
+        }
+
+        private static void SetDurationInputEditable(TextBox textBox, bool isEditable)
+        {
+            textBox.IsReadOnly = !isEditable;
+            textBox.Focusable = isEditable;
+            textBox.IsHitTestVisible = isEditable;
         }
 
         private void RefreshOverlay()

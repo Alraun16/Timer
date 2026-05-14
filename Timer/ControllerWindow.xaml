@@ -139,6 +139,7 @@
 
                 <TextBlock x:Name="TimeDisplay"
                            Text="00:05:00"
+                           Visibility="Collapsed"
                            FontSize="33"
                            FontFamily="Segoe UI Light"
                            FontWeight="Normal"
@@ -275,7 +276,7 @@
                 BorderBrush="{StaticResource PanelBorderBrush}"
                 BorderThickness="1"
                 CornerRadius="8"
-                Padding="14"
+                Padding="4, 10"
                 Effect="{StaticResource PanelShadowEffect}"
                 Margin="16,0,16,12">
 
@@ -283,16 +284,9 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0"
-                           Text="Текущая задача"
-                           FontSize="12"
-                           Foreground="{StaticResource PrimaryTextBrush}"
-                           Margin="0,0,0,10"/>
-
-                <Grid Grid.Row="1">
+                <Grid Grid.Row="0">
                     <TextBox x:Name="TaskDescriptionTextBox"
                              Style="{StaticResource DescriptionTextBox}"
                              MaxLength="1000"/>
@@ -300,14 +294,14 @@
                     <TextBlock x:Name="TaskDescriptionPlaceholder"
                                Text="Краткое описание задачи..."
                                Foreground="{StaticResource MutedTextBrush}"
-                               FontSize="9"
-                               Margin="14,9,0,0"
+                               FontSize="13"
+                               Margin="10,8,0,0"
                                IsHitTestVisible="False"
                                HorizontalAlignment="Left"
                                VerticalAlignment="Top"/>
                 </Grid>
 
-                <Grid Grid.Row="2" Margin="0,12,0,0">
+                <Grid Grid.Row="1" Margin="0,12,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
@@ -464,7 +458,9 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <Grid Grid.Row="0" Margin="6,0,8,12">
+                    <Grid x:Name="HistoryHeader"
+                          Grid.Row="0"
+                          Margin="6,0,8,12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
@@ -479,12 +475,13 @@
                         <TextBlock x:Name="HistoryTotalTextBlock"
                                    Grid.Column="1"
                                    Text="Всего: 0 мин"
-                                   FontSize="12"
+                                   FontSize="14"
                                    Foreground="{StaticResource PrimaryTextBrush}"
                                    VerticalAlignment="Center"/>
                     </Grid>
 
-                    <ScrollViewer Grid.Row="1"
+                    <ScrollViewer x:Name="HistoryScrollViewer"
+                                  Grid.Row="1"
                                   Style="{StaticResource HistoryScrollViewer}"
                                   MaxHeight="570"
                                   VerticalScrollBarVisibility="Auto">

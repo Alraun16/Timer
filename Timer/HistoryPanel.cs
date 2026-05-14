@@ -112,7 +112,7 @@ namespace Timer
             {
                 Text = dateText,
                 FontWeight = FontWeights.SemiBold,
-                FontSize = 15,
+                FontSize = 13,
                 Foreground = GetBrush("PrimaryTextBrush"),
                 Margin = new Thickness(8, 0, 0, 0),
                 VerticalAlignment = VerticalAlignment.Center
@@ -123,7 +123,7 @@ namespace Timer
             {
                 Text = totalText,
                 Foreground = GetBrush("MutedTextBrush"),
-                FontSize = 15,
+                FontSize = 13,
                 Margin = new Thickness(12, 0, 0, 0),
                 VerticalAlignment = VerticalAlignment.Center
             };
@@ -189,7 +189,7 @@ namespace Timer
             {
                 Text = FormatDescription(entry.Description),
                 Foreground = GetBrush("PrimaryTextBrush"),
-                FontSize = 13,
+                FontSize = 12,
                 TextWrapping = TextWrapping.Wrap,
                 TextTrimming = TextTrimming.None,
                 VerticalAlignment = VerticalAlignment.Top
@@ -201,7 +201,7 @@ namespace Timer
             {
                 Text = FormatShortDuration(entry.Duration),
                 Foreground = GetBrush("MutedTextBrush"),
-                FontSize = 12.5,
+                FontSize = 11.5,
                 Margin = new Thickness(8, 0, 0, 0),
                 VerticalAlignment = VerticalAlignment.Top
             };
