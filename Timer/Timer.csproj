@@ -30,7 +30,7 @@
     <Resource Include="Icons\timer_icon.ico" />
     <Resource Include="Icons\*.png" />
     <Resource Include="Icons\*.svg" />
-    <Resource Include="Images\Background.png" />
+    <Resource Include="Images\*.png" />
     <Resource Remove="Icons\icon_finished.png" />
     <Resource Remove="Icons\ыфв.png" />
   </ItemGroup>

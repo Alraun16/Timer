@@ -4,14 +4,25 @@
              Startup="OnStartup">
     <Application.Resources>
         <ImageBrush x:Key="AppBackgroundBrush"
-                    ImageSource="pack://application:,,,/Images/Background.png"
-                    Stretch="UniformToFill"
+                    ImageSource="pack://application:,,,/Images/Background_4.png"
+                    Stretch="Fill"
+                    Viewport="0,0,450,1000"
+                    ViewportUnits="Absolute"
+                    TileMode="None"
                     AlignmentX="Center"
-                    AlignmentY="Top"/>
+                    AlignmentY="Top">
+            <ImageBrush.RelativeTransform>
+                <ScaleTransform ScaleX="1.0"
+                                ScaleY="1.0"
+                                CenterX="0.5"
+                                CenterY="0.5"/>
+            </ImageBrush.RelativeTransform>
+        </ImageBrush>
         <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#3A18191B"/>
+        <SolidColorBrush x:Key="TimerPanelTintBrush" Color="#07FFFFFF"/>
         <SolidColorBrush x:Key="InputBackgroundBrush" Color="#720C0D0F"/>
         <SolidColorBrush x:Key="LightBlockBackgroundBrush" Color="#32FFFFFF"/>
-        <SolidColorBrush x:Key="PanelBorderBrush" Color="#30FFFFFF"/>
+        <SolidColorBrush x:Key="PanelBorderBrush" Color="#24FFFFFF"/>
         <SolidColorBrush x:Key="ControlBorderBrush" Color="#8AC7C7C7"/>
         <SolidColorBrush x:Key="PrimaryTextBrush" Color="#E8E8E8"/>
         <SolidColorBrush x:Key="MutedTextBrush" Color="#B8B8B8"/>
@@ -20,10 +31,10 @@
 
         <DropShadowEffect x:Key="PanelShadowEffect"
                           Color="#000000"
-                          BlurRadius="18"
-                          ShadowDepth="3"
+                          BlurRadius="24"
+                          ShadowDepth="4"
                           Direction="270"
-                          Opacity="0.38"/>
+                          Opacity="0.46"/>
 
         <Style TargetType="Window">
             <Setter Property="Background" Value="{StaticResource AppBackgroundBrush}"/>

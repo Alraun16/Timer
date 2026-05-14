@@ -16,6 +16,8 @@
         Background="Transparent">
 
     <Border Background="{StaticResource AppBackgroundBrush}"
+            BorderBrush="{StaticResource PanelBorderBrush}"
+            BorderThickness="1"
             CornerRadius="15"
             ClipToBounds="True">
 
@@ -123,7 +125,7 @@
 
         <!-- ================= TIMER ================= -->
         <Border Grid.Row="1"
-                Background="{StaticResource PanelBackgroundBrush}"
+                Background="{StaticResource TimerPanelTintBrush}"
                 BorderBrush="{StaticResource PanelBorderBrush}"
                 BorderThickness="1"
                 CornerRadius="8"
@@ -367,7 +369,7 @@
             <!-- SETTINGS -->
             <Border x:Name="SettingsPanel"
                     Visibility="Collapsed"
-                    Background="{StaticResource PanelBackgroundBrush}"
+                    Background="{StaticResource TimerPanelTintBrush}"
                     BorderBrush="{StaticResource PanelBorderBrush}"
                     BorderThickness="1"
                     CornerRadius="8"
@@ -447,7 +449,7 @@
             <!-- HISTORY -->
             <Border x:Name="HistoryPanel"
                     Visibility="Collapsed"
-                    Background="{StaticResource PanelBackgroundBrush}"
+                    Background="{StaticResource TimerPanelTintBrush}"
                     BorderBrush="{StaticResource PanelBorderBrush}"
                     BorderThickness="1"
                     CornerRadius="8"
