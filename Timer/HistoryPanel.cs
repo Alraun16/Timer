@@ -56,7 +56,7 @@ namespace Timer
             foreach (var group in entries.GroupBy(entry => entry.FinishedAt.Date).OrderByDescending(group => group.Key))
             {
                 TimeSpan total = TimeSpan.FromTicks(group.Sum(entry => entry.Duration.Ticks));
-                var taskStack = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
+                var taskStack = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
 
                 bool isFirstTask = true;
                 foreach (var entry in group.OrderByDescending(entry => entry.FinishedAt))
@@ -154,8 +154,9 @@ namespace Timer
                 BorderBrush = GetBrush("PanelBorderBrush"),
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(8),
-                Padding = new Thickness(10),
+                Padding = new Thickness(10, 10, 8, 10),
                 Margin = new Thickness(0, 0, 0, 8),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
                 Effect = (System.Windows.Media.Effects.Effect)_resourceOwner.FindResource("PanelShadowEffect"),
                 Child = content
             };
@@ -171,15 +172,15 @@ namespace Timer
             var timeBlock = new Border
             {
                 Background = GetBrush("LightBlockBackgroundBrush"),
-                CornerRadius = new CornerRadius(6),
-                Padding = new Thickness(6, 1, 6, 2),
-                Margin = new Thickness(0, 0, 8, 0),
+                CornerRadius = new CornerRadius(5),
+                Padding = new Thickness(5, 1, 5, 1),
+                Margin = new Thickness(0, 0, 6, 0),
                 VerticalAlignment = VerticalAlignment.Top,
                 Child = new TextBlock
                 {
                     Text = entry.FinishedAt.ToString("HH:mm", CultureInfo.InvariantCulture),
                     Foreground = GetBrush("PrimaryTextBrush"),
-                    FontSize = 14
+                    FontSize = 12
                 }
             };
             row.Children.Add(timeBlock);
@@ -188,7 +189,7 @@ namespace Timer
             {
                 Text = FormatDescription(entry.Description),
                 Foreground = GetBrush("PrimaryTextBrush"),
-                FontSize = 15,
+                FontSize = 13,
                 TextWrapping = TextWrapping.Wrap,
                 TextTrimming = TextTrimming.None,
                 VerticalAlignment = VerticalAlignment.Top
@@ -200,7 +201,7 @@ namespace Timer
             {
                 Text = FormatShortDuration(entry.Duration),
                 Foreground = GetBrush("MutedTextBrush"),
-                FontSize = 15,
+                FontSize = 12.5,
                 Margin = new Thickness(8, 0, 0, 0),
                 VerticalAlignment = VerticalAlignment.Top
             };
@@ -363,8 +364,8 @@ namespace Timer
 
             var iconLayer = new Grid
             {
-                Width = 20,
-                Height = 20,
+                Width = 14,
+                Height = 14,
                 ClipToBounds = false
             };
             iconLayer.Children.Add(collapseDownImage);
@@ -372,8 +373,8 @@ namespace Timer
 
             return new Border
             {
-                Width = 24,
-                Height = 24,
+                Width = 16,
+                Height = 16,
                 Margin = new Thickness(8, 0, 0, 0),
                 Background = Brushes.Transparent,
                 Cursor = System.Windows.Input.Cursors.Hand,
@@ -385,7 +386,7 @@ namespace Timer
         private Image CreateCollapseImage(bool isRotated)
         {
             string path = System.IO.Path.Combine(AppContext.BaseDirectory, "Icons", "icon-collapse.svg");
-            BitmapSource source = SvgIconRenderer.Render(path, 48);
+            BitmapSource source = SvgIconRenderer.Render(path, 32);
             if (isRotated)
             {
                 var rotated = new TransformedBitmap(source, new RotateTransform(180));
@@ -396,8 +397,8 @@ namespace Timer
             return new Image
             {
                 Source = source,
-                Width = 20,
-                Height = 20,
+                Width = 14,
+                Height = 14,
                 Stretch = Stretch.Uniform,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center

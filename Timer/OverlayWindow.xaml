@@ -24,11 +24,25 @@
             </ContextMenu>
         </Border.ContextMenu>
 
-        <TextBlock x:Name="TimeText"
-                   Text="00:05:00"
-                   FontFamily="Courier New"
-                   FontSize="24"
-                   FontWeight="Bold"
-                   Foreground="White"/>
+        <StackPanel Orientation="Horizontal">
+            <TextBlock x:Name="TimeText"
+                       Text="00:05:00"
+                       FontFamily="Courier New"
+                       FontSize="24"
+                       FontWeight="Bold"
+                       Foreground="White"
+                       VerticalAlignment="Center"/>
+
+            <Image x:Name="StateIcon"
+                   Width="18"
+                   Height="18"
+                   Margin="8,-3,0,0"
+                   RenderTransformOrigin="0.5,0.5"
+                   VerticalAlignment="Center">
+                <Image.RenderTransform>
+                    <RotateTransform x:Name="StateIconRotate"/>
+                </Image.RenderTransform>
+            </Image>
+        </StackPanel>
     </Border>
 </Window>

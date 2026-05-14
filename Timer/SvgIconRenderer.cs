@@ -203,15 +203,15 @@ namespace Timer
             {
                 Brush? fill = ReadPaint(element, "fill", inherited.Fill);
                 Brush? stroke = ReadPaint(element, "stroke", inherited.Stroke);
-                double strokeWidth = ReadLength((string?)element.Attribute("stroke-width"));
+                double strokeWidth = ReadLength(ReadPresentationValue(element, "stroke-width"));
                 if (strokeWidth == 0) strokeWidth = inherited.StrokeWidth;
 
                 return new PaintState(
                     fill,
                     stroke,
                     strokeWidth,
-                    ReadLineCap((string?)element.Attribute("stroke-linecap"), inherited.StrokeLineCap),
-                    ReadLineJoin((string?)element.Attribute("stroke-linejoin"), inherited.StrokeLineJoin));
+                    ReadLineCap(ReadPresentationValue(element, "stroke-linecap"), inherited.StrokeLineCap),
+                    ReadLineJoin(ReadPresentationValue(element, "stroke-linejoin"), inherited.StrokeLineJoin));
             }
 
             public Pen? CreatePen()
@@ -231,7 +231,7 @@ namespace Timer
 
             private static Brush? ReadPaint(XElement element, string attributeName, Brush? inherited)
             {
-                string? value = (string?)element.Attribute(attributeName);
+                string? value = ReadPresentationValue(element, attributeName);
                 if (value == null)
                     return inherited;
 
@@ -243,6 +243,32 @@ namespace Timer
                     return CreateBrush(ReadColor(element) ?? FallbackColor);
 
                 return CreateBrush(value);
+            }
+
+            private static string? ReadPresentationValue(XElement element, string name)
+            {
+                string? value = (string?)element.Attribute(name);
+                if (!string.IsNullOrWhiteSpace(value))
+                    return value;
+
+                string? style = (string?)element.Attribute("style");
+                if (string.IsNullOrWhiteSpace(style))
+                    return null;
+
+                foreach (string declaration in style.Split(';'))
+                {
+                    int separatorIndex = declaration.IndexOf(':');
+                    if (separatorIndex <= 0)
+                        continue;
+
+                    string declarationName = declaration[..separatorIndex].Trim();
+                    if (!declarationName.Equals(name, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    return declaration[(separatorIndex + 1)..].Trim();
+                }
+
+                return null;
             }
 
             private static string? ReadColor(XElement element)

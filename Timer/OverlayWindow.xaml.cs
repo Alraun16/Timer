@@ -3,12 +3,16 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Interop;
+using System.Windows.Media.Animation;
 using System.Windows.Media;
 
 namespace Timer
 {
     public partial class OverlayWindow : Window
     {
+        private bool? _isIconRunning;
+        private bool _isIconComplete;
+
         // Добавление 1: константа для доступа к расширенным стилям окна.
         private const int GWL_EXSTYLE = -20;
 
@@ -52,18 +56,64 @@ namespace Timer
         {
             InitializeComponent();
             ApplySettings(0);
+            UpdateStateIcon(isComplete: false, isRunning: false);
         }
 
-        public void UpdateTime(string timeText, bool isComplete)
+        public void UpdateTime(string timeText, bool isComplete, bool isRunning)
         {
-            TimeText.Text = isComplete ? "Good job." : timeText;
-            TimeText.Foreground = isComplete ? Brushes.LimeGreen : Brushes.White;
+            TimeText.Text = isComplete ? "Good job!" : timeText;
+            TimeText.Foreground = isComplete
+                ? Brushes.LimeGreen
+                : new SolidColorBrush(isRunning ? Color.FromRgb(0x76, 0xFF, 0x7A) : Color.FromRgb(0xC6, 0x28, 0x28));
+            UpdateStateIcon(isComplete, isRunning);
+        }
+
+        private void UpdateStateIcon(bool isComplete, bool isRunning)
+        {
+            if (_isIconComplete == isComplete && _isIconRunning == isRunning)
+                return;
+
+            _isIconComplete = isComplete;
+            _isIconRunning = isRunning;
+            string relativePath = isComplete
+                ? System.IO.Path.Combine("Icons", "Emojis", "emoji-shocked.svg")
+                : System.IO.Path.Combine("Icons", isRunning ? "icon_running.svg" : "icon_paused.svg");
+            string path = System.IO.Path.Combine(AppContext.BaseDirectory, relativePath);
+            if (!System.IO.File.Exists(path))
+                path = System.IO.Path.Combine(AppContext.BaseDirectory, "Icons", "icon_paused.svg");
+
+            if (isComplete)
+            {
+                StateIconRotate.BeginAnimation(RotateTransform.AngleProperty, null);
+                StateIconRotate.Angle = 0;
+            }
+
+            double iconSize = isComplete ? 22 : 18;
+            StateIcon.Width = iconSize;
+            StateIcon.Height = iconSize;
+            StateIcon.Source = SvgIconRenderer.Render(path, isComplete ? 43 : 36);
+
+            if (!isComplete && isRunning)
+            {
+                double startAngle = StateIconRotate.Angle % 360;
+                var animation = new DoubleAnimation(startAngle, startAngle + 360, TimeSpan.FromSeconds(4))
+                {
+                    RepeatBehavior = RepeatBehavior.Forever,
+                    EasingFunction = null
+                };
+                StateIconRotate.BeginAnimation(RotateTransform.AngleProperty, animation);
+                return;
+            }
+
+            double currentAngle = StateIconRotate.Angle;
+            StateIconRotate.BeginAnimation(RotateTransform.AngleProperty, null);
+            StateIconRotate.Angle = currentAngle;
         }
 
         public void ApplySettings(double backgroundOpacity)
         {
             byte alpha = (byte)(Math.Clamp(backgroundOpacity, 0, 1) * byte.MaxValue);
-            OverlayBorder.Background = new SolidColorBrush(Color.FromArgb(alpha, 0, 0, 0));
+            OverlayBorder.Background = new SolidColorBrush(Color.FromArgb(alpha, 0x17, 0x17, 0x1A));
         }
 
         public void PositionOnScreen(Screen screen, string position)

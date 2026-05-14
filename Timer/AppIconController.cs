@@ -102,7 +102,12 @@ namespace Timer
 
         private static BitmapSource RenderIconBitmap(AppIconState state, int size, string iconsPath)
         {
-            string fileName = state == AppIconState.Running ? "icon_running.svg" : "icon_timer.svg";
+            string fileName = state switch
+            {
+                AppIconState.Running => "icon_running.svg",
+                AppIconState.Paused => "icon_paused.svg",
+                _ => "icon_timer.svg"
+            };
             return SvgIconRenderer.Render(Path.Combine(iconsPath, fileName), size);
         }
 

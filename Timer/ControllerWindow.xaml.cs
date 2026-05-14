@@ -169,11 +169,11 @@ namespace Timer
 
         private void InitializeSvgIcons()
         {
-            SetButtonSvg(ResetButton, "icon-reset.svg", 40);
-            SetButtonSvg(EditButton, "icon-edit.svg", 40);
-            SetButtonSvg(FinishButton, "icon-finish.svg", 40);
-            SetButtonSvg(HistoryButton, "icon-history.svg", 30);
-            SetButtonSvg(SettingsButton, "icon-settings.svg", 30);
+            SetButtonSvg(ResetButton, "icon-reset.svg", 30);
+            SetButtonSvg(EditButton, "icon-edit.svg", 30);
+            SetButtonSvg(FinishButton, "icon-finish.svg", 30);
+            SetButtonSvg(HistoryButton, "icon-history.svg", 20);
+            SetButtonSvg(SettingsButton, "icon-settings.svg", 17);
             UpdateOverlayButtonState();
         }
 
@@ -418,6 +418,7 @@ namespace Timer
             if (IsTimerRunning)
             {
                 _timer.Pause();
+                UpdateTimeDisplay();
                 UpdateIcon(AppIconState.Paused);
                 UpdateButtonStates();
                 UpdateMainPanelVisibility();
@@ -430,6 +431,7 @@ namespace Timer
             }
 
             _timer.Start();
+            UpdateTimeDisplay();
             UpdateIcon(AppIconState.Running);
             UpdateButtonStates();
             UpdateMainPanelVisibility();
@@ -515,7 +517,7 @@ namespace Timer
             string fileName = isOverlayVisible
                 ? "icon-show.svg"
                 : "icon-hide.svg";
-            SetButtonSvg(ToggleOverlayButton, fileName, 19);
+            SetButtonSvg(ToggleOverlayButton, fileName, 17);
         }
 
 private void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
@@ -533,7 +535,7 @@ private void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
     RegisterConfiguredHotkeys();
 
     ApplyOverlayBackgroundOpacity();
-    _overlayWindow?.UpdateTime(GetFormattedTime(), IsTimerCompleted);
+    _overlayWindow?.UpdateTime(GetFormattedTime(), IsTimerCompleted, IsTimerRunning);
 
     if (overlayPlacementChanged)
     {
@@ -655,7 +657,7 @@ private void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
             string timeText = GetFormattedTime();
             TimeDisplay.Text = timeText;
 
-            _overlayWindow?.UpdateTime(timeText, IsTimerCompleted);
+            _overlayWindow?.UpdateTime(timeText, IsTimerCompleted, IsTimerRunning);
         }
 
         private string GetFormattedTime() => FormatTime(_timer.Remaining);
@@ -682,7 +684,7 @@ private void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
             if (_isLoadingSettings || _overlayWindow == null) return;
 
             ApplyOverlayBackgroundOpacity();
-            _overlayWindow.UpdateTime(GetFormattedTime(), IsTimerCompleted);
+            _overlayWindow.UpdateTime(GetFormattedTime(), IsTimerCompleted, IsTimerRunning);
             _overlayWindow.PositionOnScreen(GetSelectedScreen(), GetSelectedText(PositionSelector, "Top Center"));
         }
 
@@ -716,12 +718,18 @@ private void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
 
             FinishButton.IsEnabled =
                 !IsTimerCompleted &&
-                (IsTimerRunning || _timer.Remaining < _timer.Duration);
+                (IsTimerRunning || IsTimerPaused || _timer.Remaining < _timer.Duration);
 
             if (IsTimerRunning)
-                SetButtonSvg(PlayPauseButton, "icon-pause.svg", 40);
+            {
+                PlayPauseButton.Style = (Style)FindResource("PauseIconButton");
+                SetButtonSvg(PlayPauseButton, "icon-pause.svg", 33);
+            }
             else
-                SetButtonSvg(PlayPauseButton, "icon-play.svg", 40);
+            {
+                PlayPauseButton.Style = (Style)FindResource("PlayIconButton");
+                SetButtonSvg(PlayPauseButton, "icon-play.svg", 33);
+            }
         }
 
         private void UpdateIcon(AppIconState state)
