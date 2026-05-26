@@ -2,6 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Forms;
+using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media.Animation;
 using System.Windows.Media;
@@ -12,6 +13,8 @@ namespace Timer
     {
         private bool? _isIconRunning;
         private bool _isIconComplete;
+        private bool _isDragModeEnabled;
+        private double _backgroundOpacity;
 
         // Добавление 1: константа для доступа к расширенным стилям окна.
         private const int GWL_EXSTYLE = -20;
@@ -43,7 +46,10 @@ namespace Timer
             var ex = GetWindowLongPtr(hwnd, GWL_EXSTYLE).ToInt64();
             // Устанавливаем WS_EX_TRANSPARENT для пропускания мыши и WS_EX_TOOLWINDOW, чтобы сохранить
             // поведение tool-window (как было до изменений).
-            ex |= (WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW);
+            ex = _isDragModeEnabled
+                ? ex & ~WS_EX_TRANSPARENT
+                : ex | WS_EX_TRANSPARENT;
+            ex |= WS_EX_TOOLWINDOW;
             SetWindowLongPtr(hwnd, GWL_EXSTYLE, new IntPtr(ex));
         }
 
@@ -51,12 +57,34 @@ namespace Timer
         public event EventHandler? FinishRequested;
         public event EventHandler? ResetRequested;
         public event EventHandler? ExitRequested;
+        public event EventHandler? DragCompleted;
 
         public OverlayWindow()
         {
             InitializeComponent();
             ApplySettings(0);
             UpdateStateIcon(isComplete: false, isRunning: false);
+        }
+
+        public void SetDragMode(bool isEnabled)
+        {
+            if (_isDragModeEnabled == isEnabled)
+                return;
+
+            _isDragModeEnabled = isEnabled;
+            Cursor = isEnabled ? System.Windows.Input.Cursors.SizeAll : null;
+            SetBackgroundOpacity(isEnabled ? 1.0 : _backgroundOpacity);
+
+            var hwnd = new WindowInteropHelper(this).Handle;
+            if (hwnd == IntPtr.Zero)
+                return;
+
+            var ex = GetWindowLongPtr(hwnd, GWL_EXSTYLE).ToInt64();
+            ex = isEnabled
+                ? ex & ~WS_EX_TRANSPARENT
+                : ex | WS_EX_TRANSPARENT;
+            ex |= WS_EX_TOOLWINDOW;
+            SetWindowLongPtr(hwnd, GWL_EXSTYLE, new IntPtr(ex));
         }
 
         public void UpdateTime(string timeText, bool isComplete, bool isRunning)
@@ -112,6 +140,22 @@ namespace Timer
 
         public void ApplySettings(double backgroundOpacity)
         {
+            _backgroundOpacity = Math.Clamp(backgroundOpacity, 0, 1);
+            if (!_isDragModeEnabled)
+            {
+                SetBackgroundOpacity(_backgroundOpacity);
+            }
+        }
+
+        public void ApplyScale(double scale)
+        {
+            scale = Math.Clamp(scale, 0.7, 2.1);
+            OverlayScaleTransform.ScaleX = scale;
+            OverlayScaleTransform.ScaleY = scale;
+        }
+
+        private void SetBackgroundOpacity(double backgroundOpacity)
+        {
             byte alpha = (byte)(Math.Clamp(backgroundOpacity, 0, 1) * byte.MaxValue);
             OverlayBorder.Background = new SolidColorBrush(Color.FromArgb(alpha, 0x17, 0x17, 0x1A));
         }
@@ -123,8 +167,9 @@ namespace Timer
             UpdateLayout();
             double dpiScale = GetDpiScale();
 
-            double overlayWidth = ActualWidth > 0 ? ActualWidth : 170;
-            double overlayHeight = ActualHeight > 0 ? ActualHeight : 50;
+            Size overlaySize = GetOverlayLayoutSize();
+            double overlayWidth = overlaySize.Width > 0 ? overlaySize.Width : 170;
+            double overlayHeight = overlaySize.Height > 0 ? overlaySize.Height : 50;
 
             double screenLeft = bounds.Left / dpiScale;
             double screenTop = bounds.Top / dpiScale;
@@ -132,7 +177,7 @@ namespace Timer
             double screenHeight = bounds.Height / dpiScale;
             double screenRight = screenLeft + screenWidth;
             double screenBottom = screenTop + screenHeight;
-            const int margin = 10;
+            const int margin = 0;
 
             (Left, Top) = position switch
             {
@@ -144,6 +189,25 @@ namespace Timer
                 "Bottom Right" => (screenRight - overlayWidth - margin, screenBottom - overlayHeight - margin),
                 _ => (screenLeft + (screenWidth - overlayWidth) / 2, screenTop + margin)
             };
+        }
+
+        private Size GetOverlayLayoutSize()
+        {
+            try
+            {
+                UpdateLayout();
+
+                Rect bounds = OverlayBorder.TransformToAncestor(this)
+                    .TransformBounds(new Rect(OverlayBorder.RenderSize));
+
+                if (bounds.Width > 0 && bounds.Height > 0)
+                    return bounds.Size;
+            }
+            catch (InvalidOperationException)
+            {
+            }
+
+            return new Size(ActualWidth, ActualHeight);
         }
 
         private double GetDpiScale()
@@ -177,6 +241,21 @@ namespace Timer
         private void ExitMenuItem_Click(object sender, RoutedEventArgs e)
         {
             ExitRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (!_isDragModeEnabled)
+                return;
+
+            try
+            {
+                DragMove();
+            }
+            finally
+            {
+                DragCompleted?.Invoke(this, EventArgs.Empty);
+            }
         }
     }
 }

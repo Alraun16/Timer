@@ -31,19 +31,69 @@ namespace Timer
 
         public IEnumerable<HistoryEntry> ReadEntries()
         {
-            if (!File.Exists(_historyPath)) yield break;
+            int index = 0;
+
+            foreach (var entry in ReadEntryList())
+            {
+                yield return entry with { Index = index };
+                index++;
+            }
+        }
+
+        public void UpdateEntry(int index, DateTime finishedAt, TimeSpan duration, string description)
+        {
+            var entries = ReadEntryList();
+            if (index < 0 || index >= entries.Count)
+                return;
+
+            entries[index] = new HistoryEntry(index, finishedAt, duration, description);
+            WriteEntries(entries);
+        }
+
+        public void DeleteEntry(int index)
+        {
+            var entries = ReadEntryList();
+            if (index < 0 || index >= entries.Count)
+                return;
+
+            entries.RemoveAt(index);
+            WriteEntries(entries);
+        }
+
+        private List<HistoryEntry> ReadEntryList()
+        {
+            var entries = new List<HistoryEntry>();
+            if (!File.Exists(_historyPath))
+                return entries;
 
             foreach (string line in File.ReadLines(_historyPath))
             {
                 string trimmedLine = line.Trim();
-                if (TryReadJsonEntry(trimmedLine, out var jsonEntry))
-                {
-                    yield return jsonEntry;
-                }
+                if (TryReadJsonEntry(trimmedLine, entries.Count, out var jsonEntry))
+                    entries.Add(jsonEntry);
             }
+
+            return entries;
         }
 
-        private static bool TryReadJsonEntry(string line, out HistoryEntry entry)
+        private void WriteEntries(IReadOnlyList<HistoryEntry> entries)
+        {
+            var builder = new StringBuilder();
+            foreach (var entry in entries)
+            {
+                var record = new HistoryRecord
+                {
+                    FinishedAt = entry.FinishedAt,
+                    DurationTicks = entry.Duration.Ticks,
+                    Description = entry.Description
+                };
+                builder.AppendLine(JsonSerializer.Serialize(record, JsonOptions));
+            }
+
+            File.WriteAllText(_historyPath, builder.ToString(), Encoding.UTF8);
+        }
+
+        private static bool TryReadJsonEntry(string line, int index, out HistoryEntry entry)
         {
             entry = default!;
 
@@ -60,6 +110,7 @@ namespace Timer
                     return false;
 
                 entry = new HistoryEntry(
+                    index,
                     record.FinishedAt,
                     TimeSpan.FromTicks(record.DurationTicks),
                     record.Description ?? string.Empty);
@@ -80,5 +131,5 @@ namespace Timer
         }
     }
 
-    internal sealed record HistoryEntry(DateTime FinishedAt, TimeSpan Duration, string Description);
+    internal sealed record HistoryEntry(int Index, DateTime FinishedAt, TimeSpan Duration, string Description);
 }

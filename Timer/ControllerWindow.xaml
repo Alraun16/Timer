@@ -384,10 +384,12 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="Screen" Foreground="#C7C5C2" Margin="0,0,12,10" VerticalAlignment="Center"/>
-                    <ComboBox Grid.Row="0" Grid.Column="1" x:Name="ScreenSelector" Margin="0,0,0,10"/>
+                    <ComboBox Grid.Row="0" Grid.Column="1" x:Name="ScreenSelector" Margin="0,0,0,10" SelectionChanged="ScreenSelector_SelectionChanged"/>
 
                     <TextBlock Grid.Row="1" Grid.Column="0" Text="Position" Foreground="#C7C5C2" Margin="0,0,12,10" VerticalAlignment="Center"/>
                     <ComboBox Grid.Row="1" Grid.Column="1" x:Name="PositionSelector" Margin="0,0,0,10">
@@ -415,28 +417,50 @@
                                    VerticalAlignment="Center"/>
                     </StackPanel>
 
-                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Play/Pause" Foreground="#C7C5C2" Margin="0,0,12,10" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Size" Foreground="#C7C5C2" Margin="0,0,12,10" VerticalAlignment="Center"/>
                     <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10">
+                        <Slider x:Name="OverlayScaleSlider"
+                            Width="220"
+                            Minimum="100"
+                            Maximum="300"
+                            Value="100"
+                            ValueChanged="OverlayScaleSlider_ValueChanged"/>
+                        <TextBlock x:Name="OverlayScaleLabel"
+                                   Text="100%"
+                                   Foreground="#C7C5C2"
+                                   Width="42"
+                                   Margin="10,0,0,0"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Play/Pause" Foreground="#C7C5C2" Margin="0,0,12,10" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10">
                         <ComboBox x:Name="PlayHotkeyModifierSelector" Width="100" Margin="0,0,10,0"/>
                         <ComboBox x:Name="PlayHotkeyKeySelector" Width="100"/>
                     </StackPanel>
 
-                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Overlay" Foreground="#C7C5C2" Margin="0,0,12,12" VerticalAlignment="Center"/>
-                    <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,12">
+                    <TextBlock Grid.Row="5" Grid.Column="0" Text="Overlay" Foreground="#C7C5C2" Margin="0,0,12,12" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,12">
                         <ComboBox x:Name="OverlayHotkeyModifierSelector" Width="100" Margin="0,0,10,0"/>
                         <ComboBox x:Name="OverlayHotkeyKeySelector" Width="100"/>
                     </StackPanel>
 
-                    <Grid Grid.Row="5" Grid.ColumnSpan="2">
-                        <Button Grid.Row="5"
-                            Grid.Column="1"
-                            x:Name="SaveSettingsButton"
+                    <TextBlock Grid.Row="6" Grid.Column="0" Text="Drag" Foreground="#C7C5C2" Margin="0,0,12,12" VerticalAlignment="Center"/>
+                    <ComboBox Grid.Row="6" Grid.Column="1" x:Name="OverlayDragHotkeyKeySelector" Width="100" HorizontalAlignment="Left" Margin="0,0,0,12"/>
+
+                    <StackPanel Grid.Row="7" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button x:Name="CancelSettingsButton"
+                                Content="Отмена"
+                                Style="{StaticResource TextButton}"
+                                MinWidth="75"
+                                Margin="0,0,10,0"
+                                Click="CancelSettingsButton_Click"/>
+                        <Button x:Name="SaveSettingsButton"
                             Content="Сохранить"
                             Style="{StaticResource TextButton}"
                             MinWidth="75"
-                            HorizontalAlignment="Center"
                             Click="SaveSettingsButton_Click"/>
-                    </Grid>
+                    </StackPanel>
                 </Grid>
             </Border>
 

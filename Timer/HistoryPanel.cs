@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
@@ -18,6 +19,7 @@ namespace Timer
         private readonly TextBlock _totalTextBlock;
         private readonly FrameworkElement _resourceOwner;
         private readonly Dictionary<DateTime, bool> _expandedDays = new();
+        private const int DescriptionSaveLimit = 120;
 
         private bool _isOpenedOnce;
 
@@ -164,10 +166,19 @@ namespace Timer
 
         private Grid CreateTaskRow(HistoryEntry entry)
         {
-            var row = new Grid { Margin = new Thickness(0, 0, 0, 8) };
+            var row = new Grid
+            {
+                Margin = new Thickness(0, 0, 0, 8),
+                Background = Brushes.Transparent
+            };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.MouseRightButtonUp += (_, e) =>
+            {
+                ShowTaskActionMenu(row, entry, e.GetPosition(row));
+                e.Handled = true;
+            };
 
             var timeBlock = new Border
             {
@@ -185,15 +196,7 @@ namespace Timer
             };
             row.Children.Add(timeBlock);
 
-            var description = new TextBlock
-            {
-                Text = FormatDescription(entry.Description),
-                Foreground = GetBrush("PrimaryTextBrush"),
-                FontSize = 12,
-                TextWrapping = TextWrapping.Wrap,
-                TextTrimming = TextTrimming.None,
-                VerticalAlignment = VerticalAlignment.Top
-            };
+            var description = CreateDescriptionContent(entry);
             Grid.SetColumn(description, 1);
             row.Children.Add(description);
 
@@ -209,6 +212,589 @@ namespace Timer
             row.Children.Add(duration);
 
             return row;
+        }
+
+        private void ShowTaskActionMenu(FrameworkElement row, HistoryEntry entry, Point position)
+        {
+            var popup = new Popup
+            {
+                PlacementTarget = row,
+                Placement = PlacementMode.Relative,
+                HorizontalOffset = position.X,
+                VerticalOffset = position.Y,
+                AllowsTransparency = true,
+                StaysOpen = false
+            };
+
+            var editItem = CreateMenuAction("Редактировать запись");
+            editItem.MouseLeftButtonUp += (_, _) =>
+            {
+                popup.IsOpen = false;
+                BeginEdit(row, entry);
+            };
+
+            var deleteItem = CreateMenuAction("Удалить запись");
+            deleteItem.MouseLeftButtonUp += (_, _) =>
+            {
+                popup.IsOpen = false;
+                ShowDeleteConfirmation(row, entry);
+            };
+
+            popup.Child = new Border
+            {
+                Background = GetPopupBackgroundBrush(),
+                BorderBrush = GetBrush("PanelBorderBrush"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(0, 4, 0, 4),
+                Child = new StackPanel
+                {
+                    Children =
+                    {
+                        editItem,
+                        CreateMenuSeparator(),
+                        deleteItem
+                    }
+                }
+            };
+
+            popup.IsOpen = true;
+        }
+
+        private Border CreateMenuAction(string text)
+        {
+            var background = GetPopupBackgroundBrush();
+            var hoverBackground = GetPopupHoverBackgroundBrush();
+            var item = new Border
+            {
+                Background = background,
+                Padding = new Thickness(12, 6, 12, 6),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                Child = new TextBlock
+                {
+                    Text = text,
+                    Foreground = GetBrush("PrimaryTextBrush"),
+                    FontSize = 12
+                }
+            };
+            item.MouseEnter += (_, _) => item.Background = hoverBackground;
+            item.MouseLeave += (_, _) => item.Background = background;
+            return item;
+        }
+
+        private Border CreateMenuSeparator()
+        {
+            var separator = CreateTaskSeparator();
+            separator.Margin = new Thickness(0, 1, 0, 1);
+            return new Border
+            {
+                Background = GetOpaquePopupBackgroundBrush(),
+                Child = separator
+            };
+        }
+
+        private void BeginEdit(FrameworkElement row, HistoryEntry entry)
+        {
+            if (row.Parent is not Panel parent)
+                return;
+
+            int rowIndex = parent.Children.IndexOf(row);
+            if (rowIndex < 0)
+                return;
+
+            row.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (row.Parent is not Panel currentParent)
+                    return;
+
+                int currentRowIndex = currentParent.Children.IndexOf(row);
+                if (currentRowIndex < 0)
+                    return;
+
+                currentParent.Children.RemoveAt(currentRowIndex);
+                currentParent.Children.Insert(currentRowIndex, CreateEditTaskRow(entry));
+            }));
+        }
+
+        private Border CreateEditTaskRow(HistoryEntry entry)
+        {
+            var finishedAtBox = CreateHistoryInput(
+                entry.FinishedAt.ToString("HH:mm", CultureInfo.InvariantCulture),
+                48,
+                12);
+            finishedAtBox.Padding = new Thickness(3, 1, 1, 1);
+            AttachTimeMask(finishedAtBox);
+            
+            var durationBox = CreateHistoryInput(FormatFullDuration(entry.Duration), 80, 12);
+            durationBox.Padding = new Thickness(3, 1, 1, 1);
+            AttachDurationMask(durationBox);
+
+            var descriptionBox = CreateHistoryInput(entry.Description, double.NaN, 12);
+            descriptionBox.Height = double.NaN;
+            descriptionBox.MinHeight = GetDescriptionInputHeight(entry.Description);
+            descriptionBox.Padding = new Thickness(4, 4, 4, 4);
+            descriptionBox.Margin = new Thickness(-5, 0, -5, 0);
+            descriptionBox.TextWrapping = TextWrapping.Wrap;
+            descriptionBox.AcceptsReturn = true;
+            descriptionBox.MaxLength = 1000;
+            descriptionBox.VerticalContentAlignment = VerticalAlignment.Top;
+            descriptionBox.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
+
+            var cancelButton = CreatePopupButton("Отменить");
+            cancelButton.Click += (_, _) => Refresh();
+
+            var saveButton = CreatePopupButton("Сохранить");
+            saveButton.MinWidth += 2;
+
+            var descriptionCounter = new TextBlock
+            {
+                FontSize = 9,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top
+            };
+
+            void UpdateDescriptionState()
+            {
+                descriptionBox.MinHeight = GetDescriptionInputHeight(descriptionBox.Text);
+
+                int length = descriptionBox.Text.Length;
+                bool isOverLimit = length > DescriptionSaveLimit;
+                descriptionCounter.Text = $"{length} / {DescriptionSaveLimit}";
+                descriptionCounter.Foreground = GetBrush(isOverLimit ? "ErrorTextBrush" : "MutedTextBrush");
+                saveButton.IsEnabled = !isOverLimit;
+            }
+
+            descriptionBox.TextChanged += (_, _) => UpdateDescriptionState();
+            UpdateDescriptionState();
+
+            saveButton.Click += (_, _) =>
+            {
+                if (!TryParseFinishedAt(entry.FinishedAt.Date, finishedAtBox.Text, out DateTime finishedAt))
+                    return;
+
+                if (!TryParseDuration(durationBox.Text, out TimeSpan duration))
+                    return;
+
+                _historyService.UpdateEntry(entry.Index, finishedAt, duration, descriptionBox.Text);
+                Refresh();
+            };
+
+            var header = new Grid { Margin = new Thickness(0, 0, 0, 8) };
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var descriptionLabel = new TextBlock
+            {
+                Text = "Краткое описание",
+                Foreground = GetBrush("MutedTextBrush"),
+                FontSize = 12,
+                Margin = new Thickness(0, 0, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            header.Children.Add(descriptionLabel);
+
+            var timeFields = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Children =
+                {
+                    finishedAtBox,
+                    durationBox
+                }
+            };
+            finishedAtBox.Margin = new Thickness(0, 0, 8, 0);
+            Grid.SetColumn(timeFields, 1);
+            header.Children.Add(timeFields);
+
+            var content = new StackPanel();
+            content.Children.Add(header);
+            content.Children.Add(descriptionBox);
+
+            var footer = new Grid
+            {
+                Margin = new Thickness(0, 8, 0, 0),
+            };
+            footer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            footer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var actionButtons = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Children =
+                {
+                    cancelButton,
+                    saveButton
+                }
+            };
+            Grid.SetColumn(actionButtons, 1);
+            footer.Children.Add(actionButtons);
+
+            descriptionCounter.HorizontalAlignment = HorizontalAlignment.Right;
+            Grid.SetColumn(descriptionCounter, 2);
+            footer.Children.Add(descriptionCounter);
+            content.Children.Add(footer);
+
+            return new Border
+            {
+                Background = GetBrush("PanelBackgroundBrush"),
+                BorderBrush = GetBrush("PanelBorderBrush"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(10),
+                Margin = new Thickness(0, 0, 0, 8),
+                Child = content
+            };
+        }
+
+        private TextBox CreateHistoryInput(string text, double width, double fontSize)
+        {
+            var textBox = new TextBox
+            {
+                Text = text,
+                Style = (Style)_resourceOwner.FindResource("HistoryInlineTextBox"),
+                FontSize = fontSize,
+                VerticalAlignment = VerticalAlignment.Top
+            };
+
+            if (!double.IsNaN(width))
+                textBox.Width = width;
+
+            return textBox;
+        }
+
+        private static void AttachTimeMask(TextBox textBox)
+        {
+            AttachDigitMask(
+                textBox,
+                new[] { 0, 1, 3, 4 },
+                NormalizeTimeMask);
+        }
+
+        private static void AttachDurationMask(TextBox textBox)
+        {
+            AttachDigitMask(
+                textBox,
+                new[] { 0, 1, 5, 6 },
+                NormalizeDurationMask);
+        }
+
+        private static void AttachDigitMask(
+            TextBox textBox,
+            int[] digitIndexes,
+            Func<string, string> normalize)
+        {
+            textBox.Text = normalize(textBox.Text);
+            textBox.PreviewTextInput += (_, e) =>
+            {
+                e.Handled = true;
+                if (e.Text.Length != 1 || !char.IsDigit(e.Text[0]))
+                    return;
+
+                ReplaceMaskDigit(textBox, e.Text[0], digitIndexes, normalize);
+            };
+
+            textBox.PreviewKeyDown += (_, e) =>
+            {
+                if (e.Key == System.Windows.Input.Key.Back || e.Key == System.Windows.Input.Key.Delete)
+                {
+                    e.Handled = true;
+                    ClearMaskDigit(textBox, e.Key == System.Windows.Input.Key.Back ? -1 : 0, digitIndexes, normalize);
+                    return;
+                }
+
+                if (e.Key == System.Windows.Input.Key.Space)
+                    e.Handled = true;
+            };
+
+            DataObject.AddPastingHandler(textBox, (_, e) => e.CancelCommand());
+            textBox.LostKeyboardFocus += (_, _) => textBox.Text = normalize(textBox.Text);
+        }
+
+        private static string NormalizeTimeMask(string text)
+        {
+            (int hours, int minutes) = GetLimitedHoursAndMinutes(text);
+            return $"{hours:D2}:{minutes:D2}";
+        }
+
+        private static string NormalizeDurationMask(string text)
+        {
+            (int hours, int minutes) = GetLimitedHoursAndMinutes(text);
+            return $"{hours:D2} ч {minutes:D2} мин";
+        }
+
+        private static (int Hours, int Minutes) GetLimitedHoursAndMinutes(string text)
+        {
+            string digits = new string(text.Where(char.IsDigit).Take(4).ToArray()).PadRight(4, '0');
+            int hours = int.Parse(digits[..2], CultureInfo.InvariantCulture);
+            int minutes = int.Parse(digits.Substring(2, 2), CultureInfo.InvariantCulture);
+            return (Math.Min(hours, 24), Math.Min(minutes, 60));
+        }
+
+        private static void ReplaceMaskDigit(
+            TextBox textBox,
+            char digit,
+            int[] digitIndexes,
+            Func<string, string> normalize)
+        {
+            int index = GetMaskDigitIndex(textBox.SelectionStart, digitIndexes);
+            if (index < 0)
+                return;
+
+            char[] chars = normalize(textBox.Text).ToCharArray();
+            chars[index] = digit;
+
+            string nextText = new string(chars);
+            int nextPosition = GetNextMaskPosition(index, digitIndexes, nextText.Length);
+            textBox.Text = ShouldNormalizeMaskSegment(index, digitIndexes)
+                ? normalize(nextText)
+                : nextText;
+            textBox.SelectionStart = Math.Min(nextPosition, textBox.Text.Length);
+        }
+
+        private static void ClearMaskDigit(
+            TextBox textBox,
+            int offset,
+            int[] digitIndexes,
+            Func<string, string> normalize)
+        {
+            int index = GetMaskDigitIndex(textBox.SelectionStart + offset, digitIndexes);
+            if (index < 0)
+                return;
+
+            char[] chars = normalize(textBox.Text).ToCharArray();
+            chars[index] = '0';
+            textBox.Text = new string(chars);
+            textBox.SelectionStart = index;
+        }
+
+        private static int GetMaskDigitIndex(int selectionStart, int[] digitIndexes)
+        {
+            foreach (int digitIndex in digitIndexes)
+            {
+                if (selectionStart <= digitIndex)
+                    return digitIndex;
+            }
+
+            return digitIndexes[^1];
+        }
+
+        private static int GetNextMaskPosition(int index, int[] digitIndexes, int textLength)
+        {
+            for (int i = 0; i < digitIndexes.Length; i++)
+            {
+                if (digitIndexes[i] == index)
+                    return i + 1 < digitIndexes.Length ? digitIndexes[i + 1] : textLength;
+            }
+
+            return textLength;
+        }
+
+        private static bool ShouldNormalizeMaskSegment(int index, int[] digitIndexes)
+        {
+            return digitIndexes.Length >= 4
+                && (index == digitIndexes[1] || index == digitIndexes[3]);
+        }
+
+        private FrameworkElement CreateDescriptionContent(HistoryEntry entry)
+        {
+            if (string.IsNullOrWhiteSpace(entry.Description))
+            {
+                string path = System.IO.Path.Combine(
+                    AppContext.BaseDirectory,
+                    "Icons",
+                    "Emojis",
+                    GetEmptyDescriptionEmojiFileName(entry));
+
+                return new Image
+                {
+                    Source = SvgIconRenderer.Render(path, 48),
+                    Width = 16,
+                    Height = 16,
+                    Stretch = Stretch.Uniform,
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    VerticalAlignment = VerticalAlignment.Top
+                };
+            }
+
+            return new TextBlock
+            {
+                Text = FormatDescription(entry.Description),
+                Foreground = GetBrush("PrimaryTextBrush"),
+                FontSize = 12,
+                TextWrapping = TextWrapping.Wrap,
+                TextTrimming = TextTrimming.None,
+                VerticalAlignment = VerticalAlignment.Top
+            };
+        }
+
+        private static string GetEmptyDescriptionEmojiFileName(HistoryEntry entry)
+        {
+            long seed = entry.FinishedAt.Ticks ^ entry.Duration.Ticks ^ (entry.Index * 397L);
+            int emojiIndex = (int)(((seed % 6) + 6) % 6) + 1;
+            return $"emoji_{emojiIndex}.svg";
+        }
+
+        private static double GetDescriptionInputHeight(string text)
+        {
+            int lineCount = Math.Max(1, text.Split('\n').Length);
+            return Math.Max(48, 24 + lineCount * 18);
+        }
+
+        private void ShowDeleteConfirmation(FrameworkElement row, HistoryEntry entry)
+        {
+            var popup = new Popup
+            {
+                PlacementTarget = row,
+                Placement = PlacementMode.Center,
+                AllowsTransparency = true,
+                StaysOpen = false
+            };
+
+            var cancelButton = CreatePopupButton("Отменить");
+            cancelButton.Click += (_, _) => popup.IsOpen = false;
+
+            var deleteButton = CreatePopupButton("Удалить");
+            deleteButton.Click += (_, _) =>
+            {
+                popup.IsOpen = false;
+                _historyService.DeleteEntry(entry.Index);
+                Refresh();
+            };
+
+            popup.Child = new Border
+            {
+                Background = GetOpaquePopupBackgroundBrush(),
+                BorderBrush = GetBrush("PanelBorderBrush"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(12),
+                Effect = (System.Windows.Media.Effects.Effect)_resourceOwner.FindResource("PanelShadowEffect"),
+                Child = new StackPanel
+                {
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Text = "Удалить задачу?",
+                            Foreground = GetBrush("PrimaryTextBrush"),
+                            FontSize = 12,
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                            Margin = new Thickness(0, 0, 0, 10)
+                        },
+                        new StackPanel
+                        {
+                            Orientation = Orientation.Horizontal,
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                            Children =
+                            {
+                                cancelButton,
+                                deleteButton
+                            }
+                        }
+                    }
+                }
+            };
+
+            popup.IsOpen = true;
+        }
+
+        private Button CreatePopupButton(string text)
+        {
+            return new Button
+            {
+                Content = text,
+                Style = (Style)_resourceOwner.FindResource("TextButton"),
+                MinWidth = 58,
+                Margin = new Thickness(4, 0, 4, 0)
+            };
+        }
+
+        private static bool TryParseFinishedAt(DateTime date, string text, out DateTime finishedAt)
+        {
+            finishedAt = default;
+            string digits = new string(text.Where(char.IsDigit).Take(4).ToArray());
+            if (digits.Length != 4)
+                return false;
+
+            int hours = int.Parse(digits[..2], CultureInfo.InvariantCulture);
+            int minutes = int.Parse(digits.Substring(2, 2), CultureInfo.InvariantCulture);
+            if (hours > 24 || minutes > 60)
+                return false;
+
+            finishedAt = date.Date + TimeSpan.FromHours(hours) + TimeSpan.FromMinutes(minutes);
+            return true;
+        }
+
+        private static bool TryParseDuration(string text, out TimeSpan duration)
+        {
+            duration = default;
+            string value = text.Trim();
+            if (value.Length == 0)
+                return false;
+
+            if (value.Contains(':'))
+            {
+                string[] parts = value.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                if (parts.Length == 2
+                    && int.TryParse(parts[0], out int hours)
+                    && int.TryParse(parts[1], out int minutes))
+                {
+                    if (hours > 24 || minutes > 60)
+                        return false;
+
+                    duration = TimeSpan.FromHours(hours) + TimeSpan.FromMinutes(minutes);
+                    return duration >= TimeSpan.Zero;
+                }
+
+                if (parts.Length == 3
+                    && int.TryParse(parts[0], out hours)
+                    && int.TryParse(parts[1], out minutes)
+                    && int.TryParse(parts[2], out int seconds))
+                {
+                    if (hours > 24 || minutes > 60)
+                        return false;
+
+                    duration = TimeSpan.FromHours(hours) + TimeSpan.FromMinutes(minutes) + TimeSpan.FromSeconds(seconds);
+                    return duration >= TimeSpan.Zero;
+                }
+            }
+
+            var numbers = Regex.Matches(value, @"\d+")
+                .Select(match => int.Parse(match.Value, CultureInfo.InvariantCulture))
+                .ToList();
+            if (numbers.Count == 0)
+                return false;
+
+            bool hasHours = value.Contains('ч', StringComparison.OrdinalIgnoreCase);
+            if (hasHours)
+            {
+                int hours = numbers[0];
+                int minutes = numbers.Count > 1 ? numbers[1] : 0;
+                if (hours > 24 || minutes > 60)
+                    return false;
+
+                duration = TimeSpan.FromHours(hours) + TimeSpan.FromMinutes(minutes);
+                return true;
+            }
+
+            if (numbers.Count == 1)
+            {
+                if (numbers[0] > 60)
+                    return false;
+
+                duration = TimeSpan.FromMinutes(numbers[0]);
+                return true;
+            }
+
+            if (numbers[0] > 24 || numbers[1] > 60)
+                return false;
+
+            duration = TimeSpan.FromHours(numbers[0]) + TimeSpan.FromMinutes(numbers[1]);
+            return true;
         }
 
         private Border CreateTaskSeparator()
@@ -294,6 +880,21 @@ namespace Timer
             return (Brush)_resourceOwner.FindResource(resourceName);
         }
 
+        private static Brush GetPopupBackgroundBrush()
+        {
+            return new SolidColorBrush(Color.FromArgb(0xCC, 0x18, 0x19, 0x1B));
+        }
+
+        private static Brush GetOpaquePopupBackgroundBrush()
+        {
+            return new SolidColorBrush(Color.FromArgb(0xFF, 0x18, 0x19, 0x1B));
+        }
+
+        private static Brush GetPopupHoverBackgroundBrush()
+        {
+            return new SolidColorBrush(Color.FromArgb(0xE0, 0x0C, 0x0D, 0x0F));
+        }
+
         private static string FormatDate(DateTime date, DateTime today)
         {
             string dateText = $"{date.Day} {GetMonthName(date.Month)}";
@@ -323,11 +924,18 @@ namespace Timer
             return $"{hours} ч {minutes} мин";
         }
 
+        private static string FormatFullDuration(TimeSpan duration)
+        {
+            int totalMinutes = (int)Math.Round(duration.TotalMinutes);
+            if (duration > TimeSpan.Zero && totalMinutes == 0) totalMinutes = 1;
+
+            int hours = totalMinutes / 60;
+            int minutes = totalMinutes % 60;
+            return $"{hours:D2} ч {minutes:D2} мин";
+        }
+
         private static string FormatDescription(string description)
         {
-            if (string.IsNullOrWhiteSpace(description))
-                return "Славно поработал";
-
             return description
                 .Replace('\r', ' ')
                 .Replace('\n', ' ')

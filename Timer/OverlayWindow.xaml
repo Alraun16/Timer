@@ -8,12 +8,17 @@
         Topmost="True"
         ShowInTaskbar="False"
         ResizeMode="NoResize"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown"
         SizeToContent="WidthAndHeight">
 
     <Border x:Name="OverlayBorder"
             Background="#00000000"
             CornerRadius="8"
-            Padding="15,8">
+            Padding="12,6">
+        <Border.LayoutTransform>
+            <ScaleTransform x:Name="OverlayScaleTransform"/>
+        </Border.LayoutTransform>
+
         <Border.ContextMenu>
             <ContextMenu>
                 <MenuItem Header="Play/Pause" Click="PlayPauseMenuItem_Click"/>

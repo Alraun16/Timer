@@ -39,11 +39,13 @@ namespace Timer
         public int Minutes { get; set; } = 5;
         public int Seconds { get; set; }
         public int BackgroundOpacityPercent { get; set; }
+        public int OverlayScalePercent { get; set; } = 100;
         public int ScreenIndex { get; set; } = -1;
         public string Position { get; set; } = "Top Center";
         public string PlayHotkeyModifier { get; set; } = "Win";
         public string PlayHotkeyKey { get; set; } = "F5";
         public string OverlayHotkeyModifier { get; set; } = "Win";
         public string OverlayHotkeyKey { get; set; } = "F7";
+        public string OverlayDragHotkeyKey { get; set; } = "Alt";
     }
 }
