@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Media;
 using System.Runtime.InteropServices;
@@ -8,7 +9,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
 using System.Windows.Input;
-using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -22,10 +22,11 @@ namespace Timer
 {
     public partial class ControllerWindow : Window
     {
-        private const int WM_HOTKEY = 0x0312;
+        private const int WH_KEYBOARD_LL = 13;
+        private const int WM_KEYDOWN = 0x0100;
+        private const int WM_SYSKEYDOWN = 0x0104;
         private const int HOTKEY_PLAY_PAUSE = 1;
         private const int HOTKEY_TOGGLE_OVERLAY = 2;
-        private const uint MOD_NOREPEAT = 0x4000;
         private const double CompactWindowHeight = 220;
         private const double HistoryPanelDefaultMaxHeight = 640;
         private const double HistoryScrollViewerDefaultMaxHeight = 570;
@@ -62,8 +63,9 @@ namespace Timer
         private bool IsTimerIdle => _timer.IsIdle;
         private bool IsTimerCompleted => IsTimerIdle && _timer.Remaining <= TimeSpan.Zero;
 
-        private HwndSource? _hwndSource;
         private OverlayWindow? _overlayWindow;
+        private IntPtr _keyboardHook;
+        private LowLevelKeyboardProc? _keyboardHookProc;
 
         private bool _uiReady;
         private bool _isLoadingSettings;
@@ -229,22 +231,25 @@ namespace Timer
         {
             base.OnSourceInitialized(e);
 
-            var hwnd = new WindowInteropHelper(this).Handle;
-
-            _hwndSource = HwndSource.FromHwnd(hwnd);
-            _hwndSource?.AddHook(HwndHook);
-
             RegisterConfiguredHotkeys();
         }
 
         [DllImport("user32.dll")]
-        private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
-
-        [DllImport("user32.dll")]
-        private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
-
-        [DllImport("user32.dll")]
         private static extern short GetAsyncKeyState(int vKey);
+
+        private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool UnhookWindowsHookEx(IntPtr hhk);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr GetModuleHandle(string? lpModuleName);
 
         private static string AppFile(string fileName)
             => Path.Combine(AppContext.BaseDirectory, fileName);
@@ -392,26 +397,15 @@ namespace Timer
 
         private void RegisterConfiguredHotkeys()
         {
-            if (_hwndSource == null) return;
+            if (_keyboardHook != IntPtr.Zero)
+                return;
 
-            var hwnd = new WindowInteropHelper(this).Handle;
-            UnregisterHotKey(hwnd, HOTKEY_PLAY_PAUSE);
-            UnregisterHotKey(hwnd, HOTKEY_TOGGLE_OVERLAY);
+            _keyboardHookProc = LowLevelKeyboardCallback;
 
-            RegisterHotKey(hwnd, HOTKEY_PLAY_PAUSE, GetSelectedModifier(PlayHotkeyModifierSelector) | MOD_NOREPEAT, GetSelectedKey(PlayHotkeyKeySelector));
-            RegisterHotKey(hwnd, HOTKEY_TOGGLE_OVERLAY, GetSelectedModifier(OverlayHotkeyModifierSelector) | MOD_NOREPEAT, GetSelectedKey(OverlayHotkeyKeySelector));
-        }
-
-        private static uint GetSelectedModifier(ComboBox comboBox)
-        {
-            return GetSelectedText(comboBox, "Win") switch
-            {
-                "Ctrl" => 0x0002,
-                "Alt" => 0x0001,
-                "Shift" => 0x0004,
-                "None" => 0x0000,
-                _ => 0x0008
-            };
+            using Process currentProcess = Process.GetCurrentProcess();
+            ProcessModule? currentModule = currentProcess.MainModule;
+            IntPtr moduleHandle = GetModuleHandle(currentModule?.ModuleName);
+            _keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, _keyboardHookProc, moduleHandle, 0);
         }
 
         private static uint GetSelectedKey(ComboBox comboBox)
@@ -456,29 +450,49 @@ namespace Timer
             return (comboBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? fallback;
         }
 
-        private IntPtr HwndHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        private IntPtr LowLevelKeyboardCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
-            if (msg != WM_HOTKEY) return IntPtr.Zero;
-
-            switch (wParam.ToInt32())
+            int message = wParam.ToInt32();
+            if (nCode >= 0 && (message == WM_KEYDOWN || message == WM_SYSKEYDOWN))
             {
-                case HOTKEY_PLAY_PAUSE:
-                    handled = true;
-                    if (!TryBeginHotkeyPress(HOTKEY_PLAY_PAUSE))
-                        break;
+                uint virtualKey = (uint)Marshal.ReadInt32(lParam);
 
-                    PlayPauseHotkey();
-                    break;
-                case HOTKEY_TOGGLE_OVERLAY:
-                    handled = true;
-                    if (!TryBeginHotkeyPress(HOTKEY_TOGGLE_OVERLAY))
-                        break;
-
-                    ToggleOverlayButton_Click(this, new RoutedEventArgs());
-                    break;
+                if (MatchesHotkey(virtualKey, PlayHotkeyModifierSelector, PlayHotkeyKeySelector) &&
+                    TryBeginHotkeyPress(HOTKEY_PLAY_PAUSE))
+                {
+                    Dispatcher.BeginInvoke((Action)PlayPauseHotkey);
+                }
+                else if (MatchesHotkey(virtualKey, OverlayHotkeyModifierSelector, OverlayHotkeyKeySelector) &&
+                    TryBeginHotkeyPress(HOTKEY_TOGGLE_OVERLAY))
+                {
+                    Dispatcher.BeginInvoke((Action)(() => ToggleOverlayButton_Click(this, new RoutedEventArgs())));
+                }
             }
 
-            return IntPtr.Zero;
+            return CallNextHookEx(_keyboardHook, nCode, wParam, lParam);
+        }
+
+        private static bool MatchesHotkey(uint virtualKey, ComboBox modifierSelector, ComboBox keySelector)
+        {
+            return virtualKey == GetSelectedKey(keySelector) &&
+                IsSelectedModifierDown(GetSelectedText(modifierSelector, "Win"));
+        }
+
+        private static bool IsSelectedModifierDown(string modifier)
+        {
+            bool ctrlDown = IsKeyDown(0x11);
+            bool altDown = IsKeyDown(0x12);
+            bool shiftDown = IsKeyDown(0x10);
+            bool winDown = IsKeyDown(0x5B) || IsKeyDown(0x5C);
+
+            return modifier switch
+            {
+                "Ctrl" => ctrlDown && !altDown && !shiftDown && !winDown,
+                "Alt" => altDown && !ctrlDown && !shiftDown && !winDown,
+                "Shift" => shiftDown && !ctrlDown && !altDown && !winDown,
+                "None" => !ctrlDown && !altDown && !shiftDown && !winDown,
+                _ => winDown && !ctrlDown && !altDown && !shiftDown
+            };
         }
 
         private bool TryBeginHotkeyPress(int hotkeyId)
@@ -1077,9 +1091,11 @@ private void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            var helper = new WindowInteropHelper(this);
-            UnregisterHotKey(helper.Handle, HOTKEY_PLAY_PAUSE);
-            UnregisterHotKey(helper.Handle, HOTKEY_TOGGLE_OVERLAY);
+            if (_keyboardHook != IntPtr.Zero)
+            {
+                UnhookWindowsHookEx(_keyboardHook);
+                _keyboardHook = IntPtr.Zero;
+            }
 
             _tickTimer.Stop();
             _overlayWindow?.Close();
